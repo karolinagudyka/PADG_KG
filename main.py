@@ -5,13 +5,15 @@ import tkintermapview
 
 db_engine = psycopg2.connect(
     user="postgres",
-    database="postgres",
+    database="jednostki_policji",
     password="postgres",
     port="5432",
     host="localhost"
 )
 
 jednostki: list = []
+pracownicy: list = []
+incydenty: list = []
 
 class Jednostki:
     def __init__(self, name: str, city: str, street = str):
@@ -41,17 +43,21 @@ class Jednostki:
         # print(longitude)
         return [latitude, longitude]
 
-def add_jednostki(jednostki_data:list)->None:
+def add_jednostki(jednostki_data:list, db_engine = db_engine)->None:
+    cursor = db_engine.cursor()
     name:str = entry_nazwa_jednostki.get()
     city:str = entry_miasto_jednostki.get()
     street:str = entry_ulica_jednostki.get()
     jednostki_data.append(Jednostki(name=name, city=city, street=street))
     print(jednostki_data)
+    sql = f"INSERT INTO public.jednostki(name, city, street) VALUES ('{name}', '{city}', '{street}');"
     jednostki_info(jednostki_data)
     entry_nazwa_jednostki.delete(0, END)
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
+    cursor.execute(sql)
+    db_engine.commit()
 
 def jednostki_info (jednostki_data:list):
     list_box_lista_jednostek.delete(0, END)
@@ -88,6 +94,88 @@ def update_jednostki(jednostki_data: list, i):
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
+
+
+class Pracownicy:
+    def __init__(self, name: str, surname: str, city = str):
+        self.name = name
+        self.surname = surname
+        self.city = city
+        self.coords = self.get_coordinates()
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+
+    def get_coordinates(self):
+        import requests
+        from bs4 import BeautifulSoup
+        url: str = f'https://pl.wikipedia.org/wiki/{self.city}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/123.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        # print(response.text)
+        response_html = BeautifulSoup(response.text, 'html.parser')
+        # print(response_html.prettify())
+
+        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
+        # print(latitude)
+        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
+        # print(longitude)
+        return [latitude, longitude]
+
+def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
+    cursor = db_engine.cursor()
+    name:str = entry_imie_pracownika.get()
+    surname:str = entry_nazwisko_pracownika.get()
+    city:str = entry_miasto_pracownika.get()
+    pracownicy_data.append(Pracownicy(name=name, surname=surname, city=city))
+    print(pracownicy_data)
+    sql = f"INSERT INTO public.pracownicy(name, surname, city) VALUES ('{name}', '{surname}', '{city}');"
+    pracownik_info(pracownicy_data)
+    entry_imie_pracownika.delete(0, END)
+    entry_nazwisko_pracownika.delete(0, END)
+    entry_miasto_pracownika.delete(0, END)
+    entry_imie_pracownika.focus()
+    cursor.execute(sql)
+    db_engine.commit()
+
+def pracownik_info (pracownicy_data:list):
+    list_box_lista_pracownikow.delete(0, END)
+    for idx,pracownicy in enumerate(pracownicy_data):
+        list_box_lista_pracownikow.insert(idx, f"{pracownicy.name}" )
+
+def delete_pracownik(pracownicy_data: list):
+    i = list_box_lista_pracownikow.index(ACTIVE)
+    pracownicy_data[i].marker.delete()
+    pracownicy_data.pop(i)
+    pracownik_info(pracownicy_data)
+
+def edit_pracownik(pracownicy_data: list):
+    i = list_box_lista_pracownikow.index(ACTIVE)
+    entry_imie_pracownika.insert(0, pracownicy_data[i].name)
+    entry_nazwisko_pracownika.insert(0, pracownicy_data[i].surname)
+    entry_miasto_pracownika.insert(0, pracownicy_data[i].city)
+
+    button_dodaj_pracownika.config(text="Zapisz zmiany", command=lambda: update_pracownik(pracownicy_data, i))
+
+def update_pracownik(pracownicy_data: list, i):
+    pracownicy_data[i].name = entry_imie_pracownika.get()
+    pracownicy_data[i].surname = entry_nazwisko_pracownika.get()
+    pracownicy_data[i].city = entry_miasto_pracownika.get()
+
+    pracownicy_data[i].coords = pracownicy_data[i].get_coordinates()
+    pracownicy_data[i].marker.set_position(pracownicy_data[i].coords[0], pracownicy_data[i].coords[1])
+    pracownicy_data[i].marker.set_text(pracownicy_data[i].name)
+
+    pracownik_info(pracownicy_data)
+
+    button_dodaj_pracownika.config(text="Dodaj pracownika", command=lambda: add_pracownik(pracownicy))
+    entry_imie_pracownika.delete(0, END)
+    entry_nazwisko_pracownika.delete(0, END)
+    entry_miasto_pracownika.delete(0, END)
+    entry_imie_pracownika.focus()
+
 
 
 
@@ -187,10 +275,10 @@ list_box_lista_pracownikow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 buttom_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font)
 buttom_szczegoly_pracownika.grid(row=2, column=0, sticky="ew")
 
-buttom_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font)
+buttom_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font, command=lambda: delete_pracownik(pracownicy))
 buttom_usun_pracownika.grid(row=2, column=1, sticky="ew")
 
-buttom_aktualizuj_pracownika = Button(ramka_pracownicy, text="Aktualizuj", font=default_font)
+buttom_aktualizuj_pracownika = Button(ramka_pracownicy, text="Aktualizuj", font=default_font, command=lambda: edit_pracownik(pracownicy))
 buttom_aktualizuj_pracownika.grid(row=2, column=2, sticky="ew")
 
 ramka_pracownicy.columnconfigure(0, weight=1)
@@ -220,7 +308,7 @@ entry_nazwisko_pracownika.grid(row=2, column=1, sticky="ew")
 entry_miasto_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_miasto_pracownika.grid(row=3, column=1, sticky="ew")
 
-button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj obiekt", font=default_font)
+button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj pracownika", font=default_font, command=lambda: add_pracownik(pracownicy))
 button_dodaj_pracownika.grid(row=4, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_pracownicy.columnconfigure(1, weight=1)
@@ -269,8 +357,8 @@ entry_nazwa_incydentu.grid(row=1, column=1, sticky="ew")
 # entry_miasto_pracownika = Entry(ramka_formularz_jednostki)
 # entry_miasto_pracownika.grid(row=3, column=1)
 
-button_dodaj_pracownika = Button(ramka_formularz_incydenty, text="Dodaj obiekt", font=default_font)
-button_dodaj_pracownika.grid(row=2, column=0, columnspan=2, sticky="ew")
+button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font)
+button_dodaj_incydent.grid(row=2, column=0, columnspan=2, sticky="ew")
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
 # RAMKA SZCZEGÓŁY OBIEKTU
