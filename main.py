@@ -1,6 +1,15 @@
 from tkinter import *
 from tkinter import font
+import psycopg2
 import tkintermapview
+
+db_engine = psycopg2.connect(
+    user="postgres",
+    database="postgres",
+    password="postgres",
+    port="5432",
+    host="localhost"
+)
 
 jednostki: list = []
 
@@ -74,7 +83,7 @@ def update_jednostki(jednostki_data: list, i):
 
     jednostki_info(jednostki_data)
 
-    button_dodaj_jednostke.config(text="Dodaj obiekt", command=lambda: add_jednostki(jednostki))
+    button_dodaj_jednostke.config(text="Dodaj jednostkę", command=lambda: add_jednostki(jednostki))
     entry_nazwa_jednostki.delete(0, END)
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
@@ -162,7 +171,7 @@ entry_ulica_jednostki.grid(row=2, column=1, sticky="ew")
 entry_miasto_jednostki = Entry(ramka_formularz_jednostki, font=default_font)
 entry_miasto_jednostki.grid(row=3, column=1, sticky="ew")
 
-button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj obiekt", font=default_font, command=lambda: add_jednostki(jednostki))
+button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font, command=lambda: add_jednostki(jednostki))
 button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
