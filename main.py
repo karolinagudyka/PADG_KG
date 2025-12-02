@@ -177,6 +177,81 @@ def update_pracownik(pracownicy_data: list, i):
     entry_imie_pracownika.focus()
 
 
+class Incydenty:
+    def __init__(self, name: str, place: str):
+        self.name = name
+        self.place = place
+        self.coords = self.get_coordinates()
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+
+    def get_coordinates(self):
+        import requests
+        from bs4 import BeautifulSoup
+        url: str = f'https://pl.wikipedia.org/wiki/{self.place}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/123.0 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        # print(response.text)
+        response_html = BeautifulSoup(response.text, 'html.parser')
+        # print(response_html.prettify())
+
+        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
+        # print(latitude)
+        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
+        # print(longitude)
+        return [latitude, longitude]
+
+def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
+    cursor = db_engine.cursor()
+    name:str = entry_nazwa_incydentu.get()
+    place:str = entry_miejsce_incydentu.get()
+    incydenty_data.append(Incydenty(name=name, place=place))
+    print(incydenty_data)
+    sql = f"INSERT INTO public.incydenty(name, place) VALUES ('{name}', '{place}');"
+    incydent_info(incydenty_data)
+    entry_nazwa_incydentu.delete(0, END)
+    entry_miejsce_incydentu.delete(0, END)
+    entry_nazwa_incydentu.focus()
+    cursor.execute(sql)
+    db_engine.commit()
+
+def incydent_info (incydenty_info:list):
+    list_box_lista_incydentow.delete(0, END)
+    for idx,incydenty in enumerate(incydenty_info):
+        list_box_lista_incydentow.insert(idx, f"{incydenty.name}" )
+
+def delete_incydent(incydenty_data: list):
+    i = list_box_lista_incydentow.index(ACTIVE)
+    incydenty_data[i].marker.delete()
+    incydenty_data.pop(i)
+    incydent_info(incydenty_data)
+
+def edit_incydent(incydenty_data: list):
+    i = list_box_lista_incydentow.index(ACTIVE)
+    entry_nazwa_incydentu.insert(0, incydenty_data[i].name)
+    entry_miejsce_incydentu.insert(0, incydenty_data[i].place)
+
+    button_dodaj_incydent.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i))
+
+def update_incydent(incydenty_data: list, i):
+    incydenty_data[i].name = entry_nazwa_incydentu.get()
+    incydenty_data[i].place = entry_miejsce_incydentu.get()
+
+    incydenty_data[i].coords = incydenty_data[i].get_coordinates()
+    incydenty_data[i].marker.set_position(incydenty_data[i].coords[0], incydenty_data[i].coords[1])
+    incydenty_data[i].marker.set_text(incydenty_data[i].name)
+
+    incydent_info(incydenty_data)
+
+    button_dodaj_incydent.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty))
+    entry_nazwa_incydentu.delete(0, END)
+    entry_miejsce_incydentu.delete(0, END)
+    entry_nazwa_incydentu.focus()
+
+
 
 
 root = Tk()
@@ -324,10 +399,10 @@ list_box_lista_incydentow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 buttom_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font)
 buttom_szczegoly_incydentu.grid(row=2, column=0, sticky="ew")
 
-buttom_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font)
+buttom_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font, command=lambda: delete_incydent(incydenty))
 buttom_usun_incydent.grid(row=2, column=1, sticky="ew")
 
-buttom_aktualizuj_incydent = Button(ramka_incydenty, text="Aktualizuj", font=default_font)
+buttom_aktualizuj_incydent = Button(ramka_incydenty, text="Aktualizuj", font=default_font, command=lambda: edit_incydent(incydenty))
 buttom_aktualizuj_incydent.grid(row=2, column=2, sticky="ew")
 
 ramka_incydenty.columnconfigure(0, weight=1)
@@ -342,23 +417,20 @@ label_formularz_incydentow.grid(row=0, column=0, columnspan=2, sticky="ew")
 label_nazwa_incydentu = Label(ramka_formularz_incydenty, text= "Nazwa: ", font=default_font, bg="#f0c2e3")
 label_nazwa_incydentu.grid(row=1, column=0, sticky=W)
 
-# label_nazwisko_pracownika = Label(ramka_formularz_jednostki, text="Nazwisko: ")
-# label_nazwisko_pracownika.grid(row=2, column=0, sticky=W)
-#
-# label_miasto_pracownika = Label(ramka_formularz_jednostki, text="Miasto: ")
-# label_miasto_pracownika.grid(row=3, column=0, sticky=W)
+label_miejsce_incydentu = Label(ramka_formularz_incydenty, text="Miejsce: ", font=default_font, bg="#f0c2e3")
+label_miejsce_incydentu.grid(row=2, column=0, sticky=W)
 
 entry_nazwa_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_nazwa_incydentu.grid(row=1, column=1, sticky="ew")
 
-# entry_nazwisko_pracownika = Entry(ramka_formularz_jednostki)
-# entry_nazwisko_pracownika.grid(row=2, column=1)
+entry_miejsce_incydentu = Entry(ramka_formularz_incydenty)
+entry_miejsce_incydentu.grid(row=2, column=1, sticky="ew")
 #
 # entry_miasto_pracownika = Entry(ramka_formularz_jednostki)
 # entry_miasto_pracownika.grid(row=3, column=1)
 
-button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font)
-button_dodaj_incydent.grid(row=2, column=0, columnspan=2, sticky="ew")
+button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font, command=lambda: add_incydent(incydenty))
+button_dodaj_incydent.grid(row=3, column=0, columnspan=2, sticky="ew")
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
 # RAMKA SZCZEGÓŁY OBIEKTU
