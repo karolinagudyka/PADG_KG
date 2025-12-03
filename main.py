@@ -66,6 +66,10 @@ def jednostki_info (jednostki_data:list):
 
 def delete_jednostka(jednostki_data: list):
     i = list_box_lista_jednostek.index(ACTIVE)
+    name = jednostki_data[i].name
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.jednostki WHERE name = %s", (name,))
+    db_engine.commit()
     jednostki_data[i].marker.delete()
     jednostki_data.pop(i)
     jednostki_info(jednostki_data)
@@ -79,9 +83,16 @@ def edit_jednostki(jednostki_data: list):
     button_dodaj_jednostke.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i))
 
 def update_jednostki(jednostki_data: list, i):
+    old_name = jednostki_data[i].name
     jednostki_data[i].name = entry_nazwa_jednostki.get()
     jednostki_data[i].city = entry_miasto_jednostki.get()
     jednostki_data[i].street = entry_ulica_jednostki.get()
+
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.jednostki SET name = %s, city = %s, street = %s WHERE name = %s"
+    cursor.execute(sql, (jednostki_data[i].name, jednostki_data[i].city, jednostki_data[i].street, old_name))
+    db_engine.commit()
+    cursor.close()
 
     jednostki_data[i].coords = jednostki_data[i].get_coordinates()
     jednostki_data[i].marker.set_position(jednostki_data[i].coords[0], jednostki_data[i].coords[1])
@@ -147,6 +158,10 @@ def pracownik_info (pracownicy_data:list):
 
 def delete_pracownik(pracownicy_data: list):
     i = list_box_lista_pracownikow.index(ACTIVE)
+    name = pracownicy_data[i].name
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.pracownicy WHERE name = %s", (name,))
+    db_engine.commit()
     pracownicy_data[i].marker.delete()
     pracownicy_data.pop(i)
     pracownik_info(pracownicy_data)
@@ -160,9 +175,18 @@ def edit_pracownik(pracownicy_data: list):
     button_dodaj_pracownika.config(text="Zapisz zmiany", command=lambda: update_pracownik(pracownicy_data, i))
 
 def update_pracownik(pracownicy_data: list, i):
+    old_name = pracownicy_data[i].name
+    old_surname = pracownicy_data[i].surname
+
     pracownicy_data[i].name = entry_imie_pracownika.get()
     pracownicy_data[i].surname = entry_nazwisko_pracownika.get()
     pracownicy_data[i].city = entry_miasto_pracownika.get()
+
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.pracownicy SET name = %s, surname = %s, city = %s WHERE name = %s AND surname = %s"
+    cursor.execute(sql, (pracownicy_data[i].name, pracownicy_data[i].surname, pracownicy_data[i].city, old_name, old_surname))
+    db_engine.commit()
+    cursor.close()
 
     pracownicy_data[i].coords = pracownicy_data[i].get_coordinates()
     pracownicy_data[i].marker.set_position(pracownicy_data[i].coords[0], pracownicy_data[i].coords[1])
@@ -225,6 +249,10 @@ def incydent_info (incydenty_info:list):
 
 def delete_incydent(incydenty_data: list):
     i = list_box_lista_incydentow.index(ACTIVE)
+    name = incydenty_data[i].name
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.incydenty WHERE name = %s", (name,))
+    db_engine.commit()
     incydenty_data[i].marker.delete()
     incydenty_data.pop(i)
     incydent_info(incydenty_data)
@@ -237,8 +265,15 @@ def edit_incydent(incydenty_data: list):
     button_dodaj_incydent.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i))
 
 def update_incydent(incydenty_data: list, i):
+    old_name = incydenty_data[i].name
     incydenty_data[i].name = entry_nazwa_incydentu.get()
     incydenty_data[i].place = entry_miejsce_incydentu.get()
+
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.incydenty SET name = %s, place = %s WHERE name = %s"
+    cursor.execute(sql, (incydenty_data[i].name, incydenty_data[i].place, old_name))
+    db_engine.commit()
+    cursor.close()
 
     incydenty_data[i].coords = incydenty_data[i].get_coordinates()
     incydenty_data[i].marker.set_position(incydenty_data[i].coords[0], incydenty_data[i].coords[1])
