@@ -122,6 +122,62 @@ def update_jednostki(jednostki_data: list, i):
     entry_nazwa_jednostki.focus()
 
 
+def show_jednostka_details(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, city, street, logo_url, website_url, description FROM public.jednostki WHERE name = %s"
+    cursor.execute(sql, (jednostki_data[i].name,))
+    data = cursor.fetchone()
+    cursor.close()
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły jednostki: {data[0]}")
+    detail_window.geometry("500x250")
+    detail_window.configure(bg="#f2d0d7")
+
+    Label(detail_window, text=f"Szczegóły jednostki", font=label_font, bg="#f2d0d7").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#f2d0d7", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#f2d0d7").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#f2d0d7").grid(row=1, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Ulica:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[2], font=default_font, bg="#f2d0d7").grid(row=2, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Logo:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=3, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[3], font=default_font, bg="#f2d0d7").grid(row=3, column=1, sticky=W, pady=5)
+
+
+    Label(info_frame, text="Strona internetowa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=4, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[4], font=default_font, bg="#f2d0d7").grid(row=4, column=1, sticky=W, pady=5)
+    link_label = Label(info_frame, text=data[4], font=default_font, fg="blue", cursor="hand2", bg="#f2d0d7")
+    link_label.grid(row=4, column=1, sticky=W)
+
+    link_label.bind("<Button-1>", lambda e: webbrowser.open(data[4]))
+
+    Label(info_frame, text="Opis:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=5, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[5], font=default_font, bg="#f2d0d7").grid(row=5, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_nazwa_jednostki.delete(0, END)
+    entry_ulica_jednostki.delete(0, END)
+    entry_miasto_jednostki.delete(0, END)
+    entry_nazwa_jednostki.focus()
+
+
+
 class Pracownicy:
     def __init__(self, name: str, surname: str, city = str):
         self.name = name
@@ -449,7 +505,7 @@ label_lista_jednostek.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_jednostek = Listbox(ramka_jednostki, font=default_font)
 list_box_lista_jednostek.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font, command=lambda: show_jednostka_details(jednostki))
 buttom_szczegoly_jednostki.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_jednostke = Button(ramka_jednostki, text="Usuń", font=default_font, command=lambda: delete_jednostka(jednostki))
