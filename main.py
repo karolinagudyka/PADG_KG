@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import font
 import psycopg2
 import tkintermapview
+import webbrowser
 
 db_engine = psycopg2.connect(
     user="postgres",
@@ -267,6 +268,43 @@ def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     entry_miejsce_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
 
+
+def show_incydent_details(incydenty_data: list):
+    i = list_box_lista_incydentow.index(ACTIVE)
+    if i < 0:
+        return
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, place FROM public.incydenty WHERE name = %s"
+    cursor.execute(sql, (incydenty_data[i].name,))
+    data = cursor.fetchone()
+    cursor.close()
+
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły incydentu: {data[0]}")
+    detail_window.geometry("500x250")
+    detail_window.configure(bg="#f0c2e3")
+
+    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#f0c2e3").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#f0c2e3", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#f0c2e3").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miejsce:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#f0c2e3").grid(row=1, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_nazwa_incydentu.delete(0, END)
+    entry_miejsce_incydentu.delete(0, END)
+    entry_nazwa_incydentu.focus()
+
 def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
     for incydent in incydenty_data:
         incydent.marker.delete()
@@ -468,7 +506,7 @@ label_lista_incydentow.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_incydentow = Listbox(ramka_incydenty, font=default_font)
 list_box_lista_incydentow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font, command=lambda: show_incydent_details(incydenty))
 buttom_szczegoly_incydentu.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font, command=lambda: delete_incydent(incydenty))
