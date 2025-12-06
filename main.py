@@ -226,6 +226,47 @@ def update_pracownik(pracownicy_data: list, i):
     entry_imie_pracownika.focus()
 
 
+def show_pracownik_details(pracownik_data: list):
+    i = list_box_lista_pracownikow.index(ACTIVE)
+    if i < 0:
+        return
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, surname, city FROM public.pracownicy WHERE name = %s AND surname = %s"
+    cursor.execute(sql, (pracownik_data[i].name, pracownik_data[i].surname))
+    data = cursor.fetchone()
+    cursor.close()
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły pracownika: {data[0]}")
+    detail_window.geometry("500x250")
+    detail_window.configure(bg="#eddff7")
+
+    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#eddff7").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#eddff7", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Imię:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#eddff7").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Nazwisko:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#eddff7").grid(row=1, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[2], font=default_font, bg="#eddff7").grid(row=2, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_imie_pracownika.delete(0, END)
+    entry_nazwisko_pracownika.delete(0, END)
+    entry_miasto_pracownika.delete(0, END)
+    entry_imie_pracownika.focus()
+
+
+
 class Incydenty:
     def __init__(self, name: str, place: str):
         self.name = name
@@ -457,7 +498,7 @@ label_lista_pracownikow.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_pracownikow = Listbox(ramka_pracownicy, font=default_font)
 list_box_lista_pracownikow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font, command=lambda: show_pracownik_details(pracownicy))
 buttom_szczegoly_pracownika.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font, command=lambda: delete_pracownik(pracownicy))
