@@ -48,30 +48,44 @@ def add_jednostki(jednostki_data:list, db_engine = db_engine)->None:
     name:str = entry_nazwa_jednostki.get()
     city:str = entry_miasto_jednostki.get()
     street:str = entry_ulica_jednostki.get()
-    jednostki_data.append(Jednostki(name=name, city=city, street=street))
-    print(jednostki_data)
-    sql = f"INSERT INTO public.jednostki(name, city, street) VALUES ('{name}', '{city}', '{street}');"
+
+    sql = "INSERT INTO public.jednostki(name, city, street) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, city, street))
+    db_engine.commit()
+    cursor.close()
+
     jednostki_info(jednostki_data)
     entry_nazwa_jednostki.delete(0, END)
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def jednostki_info (jednostki_data:list):
+def jednostki_info (jednostki_data:list, db_engine=db_engine):
+    for jednostka in jednostki_data:
+        jednostka.marker.delete()
+    jednostki_data.clear()
+
     list_box_lista_jednostek.delete(0, END)
-    for idx,jednostki in enumerate(jednostki_data):
-        list_box_lista_jednostek.insert(idx, f"{jednostki.name}" )
+    sql = "SELECT name, city, street FROM public.jednostki"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx,row in enumerate(db_data):
+        jednostki_data.append(Jednostki(name=row[0], city=row[1], street=row[2]))
+        list_box_lista_jednostek.insert(idx, f"{row[0]}")
+
 
 def delete_jednostka(jednostki_data: list):
     i = list_box_lista_jednostek.index(ACTIVE)
     name = jednostki_data[i].name
+
     cursor = db_engine.cursor()
     cursor.execute("DELETE FROM public.jednostki WHERE name = %s", (name,))
     db_engine.commit()
-    jednostki_data[i].marker.delete()
-    jednostki_data.pop(i)
+    cursor.close()
+
     jednostki_info(jednostki_data)
 
 def edit_jednostki(jednostki_data: list):
@@ -140,30 +154,45 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     name:str = entry_imie_pracownika.get()
     surname:str = entry_nazwisko_pracownika.get()
     city:str = entry_miasto_pracownika.get()
-    pracownicy_data.append(Pracownicy(name=name, surname=surname, city=city))
-    print(pracownicy_data)
-    sql = f"INSERT INTO public.pracownicy(name, surname, city) VALUES ('{name}', '{surname}', '{city}');"
+
+    sql = "INSERT INTO public.pracownicy(name, surname, city) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, surname, city))
+    db_engine.commit()
+    cursor.close()
+
     pracownik_info(pracownicy_data)
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def pracownik_info (pracownicy_data:list):
+
+def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
+    for pracownik in pracownicy_data:
+        pracownik.marker.delete()
+    pracownicy_data.clear()
+
     list_box_lista_pracownikow.delete(0, END)
-    for idx,pracownicy in enumerate(pracownicy_data):
-        list_box_lista_pracownikow.insert(idx, f"{pracownicy.name}" )
+    sql = "SELECT name, surname, city FROM public.pracownicy"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx,row in enumerate(db_data):
+        pracownicy_data.append(Pracownicy(name=row[0], surname=row[1], city=row[2]))
+        list_box_lista_pracownikow.insert(idx, f"{row[0]} {row[1]}" )
 
 def delete_pracownik(pracownicy_data: list):
     i = list_box_lista_pracownikow.index(ACTIVE)
     name = pracownicy_data[i].name
+    surname = pracownicy_data[i].surname
+
     cursor = db_engine.cursor()
-    cursor.execute("DELETE FROM public.pracownicy WHERE name = %s", (name,))
+    cursor.execute("DELETE FROM public.pracownicy WHERE name = %s AND surname = %s", (name, surname))
     db_engine.commit()
-    pracownicy_data[i].marker.delete()
-    pracownicy_data.pop(i)
+    cursor.close()
+
     pracownik_info(pracownicy_data)
 
 def edit_pracownik(pracownicy_data: list):
@@ -177,20 +206,15 @@ def edit_pracownik(pracownicy_data: list):
 def update_pracownik(pracownicy_data: list, i):
     old_name = pracownicy_data[i].name
     old_surname = pracownicy_data[i].surname
-
-    pracownicy_data[i].name = entry_imie_pracownika.get()
-    pracownicy_data[i].surname = entry_nazwisko_pracownika.get()
-    pracownicy_data[i].city = entry_miasto_pracownika.get()
+    new_name = entry_imie_pracownika.get()
+    new_surname = entry_nazwisko_pracownika.get()
+    new_city = entry_miasto_pracownika.get()
 
     cursor = db_engine.cursor()
     sql = "UPDATE public.pracownicy SET name = %s, surname = %s, city = %s WHERE name = %s AND surname = %s"
-    cursor.execute(sql, (pracownicy_data[i].name, pracownicy_data[i].surname, pracownicy_data[i].city, old_name, old_surname))
+    cursor.execute(sql, (new_name, new_surname, new_city, old_name, old_surname))
     db_engine.commit()
     cursor.close()
-
-    pracownicy_data[i].coords = pracownicy_data[i].get_coordinates()
-    pracownicy_data[i].marker.set_position(pracownicy_data[i].coords[0], pracownicy_data[i].coords[1])
-    pracownicy_data[i].marker.set_text(pracownicy_data[i].name)
 
     pracownik_info(pracownicy_data)
 
@@ -230,31 +254,44 @@ class Incydenty:
 
 def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
-    name:str = entry_nazwa_incydentu.get()
-    place:str = entry_miejsce_incydentu.get()
-    incydenty_data.append(Incydenty(name=name, place=place))
-    print(incydenty_data)
-    sql = f"INSERT INTO public.incydenty(name, place) VALUES ('{name}', '{place}');"
+    name: str = entry_nazwa_incydentu.get()
+    place: str = entry_miejsce_incydentu.get()
+
+    sql = "INSERT INTO public.incydenty(name, place) VALUES (%s, %s);"
+    cursor.execute(sql, (name, place))
+    db_engine.commit()
+    cursor.close()
+
     incydent_info(incydenty_data)
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def incydent_info (incydenty_info:list):
+def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
+    for incydent in incydenty_data:
+        incydent.marker.delete()
+    incydenty_data.clear()
+
     list_box_lista_incydentow.delete(0, END)
-    for idx,incydenty in enumerate(incydenty_info):
-        list_box_lista_incydentow.insert(idx, f"{incydenty.name}" )
+    sql = "SELECT name, place FROM public.incydenty"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx, row in enumerate(db_data):
+        incydenty_data.append(Incydenty(name=row[0], place=row[1]))
+        list_box_lista_incydentow.insert(idx, f"{row[0]}")
 
 def delete_incydent(incydenty_data: list):
     i = list_box_lista_incydentow.index(ACTIVE)
     name = incydenty_data[i].name
+
     cursor = db_engine.cursor()
     cursor.execute("DELETE FROM public.incydenty WHERE name = %s", (name,))
     db_engine.commit()
-    incydenty_data[i].marker.delete()
-    incydenty_data.pop(i)
+    cursor.close()
+
     incydent_info(incydenty_data)
 
 def edit_incydent(incydenty_data: list):
@@ -501,5 +538,9 @@ map_widget.grid(row=0, column=0, sticky="nsew")
 
 ramka_mapa.columnconfigure(0, weight=1)
 ramka_mapa.rowconfigure(0, weight=1)
+
+jednostki_info(jednostki)
+pracownik_info(pracownicy)
+incydent_info(incydenty)
 
 root.mainloop()
