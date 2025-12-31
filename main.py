@@ -138,7 +138,7 @@ def show_jednostka_details(jednostki_data: list):
 
     detail_window = Toplevel(root)
     detail_window.title(f"Szczegóły jednostki: {data[0]}")
-    detail_window.geometry("500x250")
+    detail_window.geometry("800x650")
     detail_window.configure(bg="#f2d0d7")
 
     Label(detail_window, text=f"Szczegóły jednostki", font=label_font, bg="#f2d0d7").pack(pady=10)
@@ -581,6 +581,9 @@ label_nazwisko_pracownika.grid(row=2, column=0, sticky=W)
 label_miasto_pracownika = Label(ramka_formularz_pracownicy, text="Miasto: ", font=default_font, bg="#eddff7")
 label_miasto_pracownika.grid(row=3, column=0, sticky=W)
 
+label_jednostka_pracownika = Label(ramka_formularz_pracownicy, text="Jednostka policji: ", font=default_font, bg="#eddff7")
+label_jednostka_pracownika.grid(row=4, column=0, sticky=W)
+
 entry_imie_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_imie_pracownika.grid(row=1, column=1, sticky="ew")
 
@@ -590,8 +593,11 @@ entry_nazwisko_pracownika.grid(row=2, column=1, sticky="ew")
 entry_miasto_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_miasto_pracownika.grid(row=3, column=1, sticky="ew")
 
+entry_jednostka_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
+entry_jednostka_pracownika.grid(row=4, column=1, sticky="ew")
+
 button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj pracownika", font=default_font, command=lambda: add_pracownik(pracownicy))
-button_dodaj_pracownika.grid(row=4, column=0, columnspan=2, sticky="ew")
+button_dodaj_pracownika.grid(row=5, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_pracownicy.columnconfigure(1, weight=1)
 
@@ -627,40 +633,26 @@ label_nazwa_incydentu.grid(row=1, column=0, sticky=W)
 label_miejsce_incydentu = Label(ramka_formularz_incydenty, text="Miejsce: ", font=default_font, bg="#f0c2e3")
 label_miejsce_incydentu.grid(row=2, column=0, sticky=W)
 
+label_jednostka_incydentu = Label(ramka_formularz_incydenty, text="Jednostka policji: ", font=default_font, bg="#f0c2e3")
+label_jednostka_incydentu.grid(row=3, column=0, sticky=W)
+
 entry_nazwa_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_nazwa_incydentu.grid(row=1, column=1, sticky="ew")
 
-entry_miejsce_incydentu = Entry(ramka_formularz_incydenty)
+entry_miejsce_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_miejsce_incydentu.grid(row=2, column=1, sticky="ew")
-#
-# entry_miasto_pracownika = Entry(ramka_formularz_jednostki)
-# entry_miasto_pracownika.grid(row=3, column=1)
+
+entry_jednostka_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
+entry_jednostka_incydentu.grid(row=3, column=1, sticky="ew")
 
 button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font, command=lambda: add_incydent(incydenty))
-button_dodaj_incydent.grid(row=3, column=0, columnspan=2, sticky="ew")
+button_dodaj_incydent.grid(row=4, column=0, columnspan=2, sticky="ew")
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
-# RAMKA SZCZEGÓŁY OBIEKTU
-label_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Szczegóły obiektu: ", font=label_font, bg="#f7e9f3")
+# RAMKA NAGŁÓWEK MAPY
+label_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Mapa", font=label_font, bg="#f7e9f3")
 label_szczegoly_obiektu.grid(row=0, column=0, columnspan=6, sticky="ew")
 
-# label_imie_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text= "Imie: ", font=default_font, bg="#f7e9f3")
-# label_imie_szczegoly_obiektu.grid(row=1, column=0, sticky="ew")
-#
-# label_imie_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_imie_szczegoly_obiektu_wartosc.grid(row=1, column=1, sticky="ew")
-#
-# label_lokalizacja_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Lokalizacja: ", font=default_font, bg="#f7e9f3")
-# label_lokalizacja_szczegoly_obiektu.grid(row=1, column=2, sticky="ew")
-#
-# label_lokalizacja_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_lokalizacja_szczegoly_obiektu_wartosc.grid(row=1, column=3, sticky="ew")
-#
-# label_posty_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text= "Posty: ", font=default_font, bg="#f7e9f3")
-# label_posty_szczegoly_obiektu.grid(row=1, column=4, sticky="ew")
-#
-# label_posty_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_posty_szczegoly_obiektu_wartosc.grid(row=1, column=5, sticky="ew")
 
 for i in range(6):
     ramka_szczegoly_obiektu.columnconfigure(i, weight=1)
