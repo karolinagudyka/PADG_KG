@@ -2,6 +2,7 @@ from tkinter import *
 from tkinter import font
 import psycopg2
 import tkintermapview
+import webbrowser
 
 db_engine = psycopg2.connect(
     user="postgres",
@@ -48,26 +49,44 @@ def add_jednostki(jednostki_data:list, db_engine = db_engine)->None:
     name:str = entry_nazwa_jednostki.get()
     city:str = entry_miasto_jednostki.get()
     street:str = entry_ulica_jednostki.get()
-    jednostki_data.append(Jednostki(name=name, city=city, street=street))
-    print(jednostki_data)
-    sql = f"INSERT INTO public.jednostki(name, city, street) VALUES ('{name}', '{city}', '{street}');"
+
+    sql = "INSERT INTO public.jednostki(name, city, street) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, city, street))
+    db_engine.commit()
+    cursor.close()
+
     jednostki_info(jednostki_data)
     entry_nazwa_jednostki.delete(0, END)
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def jednostki_info (jednostki_data:list):
+def jednostki_info (jednostki_data:list, db_engine=db_engine):
+    for jednostka in jednostki_data:
+        jednostka.marker.delete()
+    jednostki_data.clear()
+
     list_box_lista_jednostek.delete(0, END)
-    for idx,jednostki in enumerate(jednostki_data):
-        list_box_lista_jednostek.insert(idx, f"{jednostki.name}" )
+    sql = "SELECT name, city, street FROM public.jednostki"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx,row in enumerate(db_data):
+        jednostki_data.append(Jednostki(name=row[0], city=row[1], street=row[2]))
+        list_box_lista_jednostek.insert(idx, f"{row[0]}")
+
 
 def delete_jednostka(jednostki_data: list):
     i = list_box_lista_jednostek.index(ACTIVE)
-    jednostki_data[i].marker.delete()
-    jednostki_data.pop(i)
+    name = jednostki_data[i].name
+
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.jednostki WHERE name = %s", (name,))
+    db_engine.commit()
+    cursor.close()
+
     jednostki_info(jednostki_data)
 
 def edit_jednostki(jednostki_data: list):
@@ -79,9 +98,16 @@ def edit_jednostki(jednostki_data: list):
     button_dodaj_jednostke.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i))
 
 def update_jednostki(jednostki_data: list, i):
+    old_name = jednostki_data[i].name
     jednostki_data[i].name = entry_nazwa_jednostki.get()
     jednostki_data[i].city = entry_miasto_jednostki.get()
     jednostki_data[i].street = entry_ulica_jednostki.get()
+
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.jednostki SET name = %s, city = %s, street = %s WHERE name = %s"
+    cursor.execute(sql, (jednostki_data[i].name, jednostki_data[i].city, jednostki_data[i].street, old_name))
+    db_engine.commit()
+    cursor.close()
 
     jednostki_data[i].coords = jednostki_data[i].get_coordinates()
     jednostki_data[i].marker.set_position(jednostki_data[i].coords[0], jednostki_data[i].coords[1])
@@ -94,6 +120,62 @@ def update_jednostki(jednostki_data: list, i):
     entry_miasto_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
+
+
+def show_jednostka_details(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, city, street, logo_url, website_url, description FROM public.jednostki WHERE name = %s"
+    cursor.execute(sql, (jednostki_data[i].name,))
+    data = cursor.fetchone()
+    cursor.close()
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły jednostki: {data[0]}")
+    detail_window.geometry("800x650")
+    detail_window.configure(bg="#f2d0d7")
+
+    Label(detail_window, text=f"Szczegóły jednostki", font=label_font, bg="#f2d0d7").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#f2d0d7", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#f2d0d7").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#f2d0d7").grid(row=1, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Ulica:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[2], font=default_font, bg="#f2d0d7").grid(row=2, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Logo:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=3, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[3], font=default_font, bg="#f2d0d7").grid(row=3, column=1, sticky=W, pady=5)
+
+
+    Label(info_frame, text="Strona internetowa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=4, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[4], font=default_font, bg="#f2d0d7").grid(row=4, column=1, sticky=W, pady=5)
+    link_label = Label(info_frame, text=data[4], font=default_font, fg="blue", cursor="hand2", bg="#f2d0d7")
+    link_label.grid(row=4, column=1, sticky=W)
+
+    link_label.bind("<Button-1>", lambda e: webbrowser.open(data[4]))
+
+    Label(info_frame, text="Opis:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=5, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[5], font=default_font, bg="#f2d0d7").grid(row=5, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_nazwa_jednostki.delete(0, END)
+    entry_ulica_jednostki.delete(0, END)
+    entry_miasto_jednostki.delete(0, END)
+    entry_nazwa_jednostki.focus()
+
 
 
 class Pracownicy:
@@ -129,26 +211,45 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     name:str = entry_imie_pracownika.get()
     surname:str = entry_nazwisko_pracownika.get()
     city:str = entry_miasto_pracownika.get()
-    pracownicy_data.append(Pracownicy(name=name, surname=surname, city=city))
-    print(pracownicy_data)
-    sql = f"INSERT INTO public.pracownicy(name, surname, city) VALUES ('{name}', '{surname}', '{city}');"
+
+    sql = "INSERT INTO public.pracownicy(name, surname, city) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, surname, city))
+    db_engine.commit()
+    cursor.close()
+
     pracownik_info(pracownicy_data)
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def pracownik_info (pracownicy_data:list):
+
+def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
+    for pracownik in pracownicy_data:
+        pracownik.marker.delete()
+    pracownicy_data.clear()
+
     list_box_lista_pracownikow.delete(0, END)
-    for idx,pracownicy in enumerate(pracownicy_data):
-        list_box_lista_pracownikow.insert(idx, f"{pracownicy.name}" )
+    sql = "SELECT name, surname, city FROM public.pracownicy"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx,row in enumerate(db_data):
+        pracownicy_data.append(Pracownicy(name=row[0], surname=row[1], city=row[2]))
+        list_box_lista_pracownikow.insert(idx, f"{row[0]} {row[1]}" )
 
 def delete_pracownik(pracownicy_data: list):
     i = list_box_lista_pracownikow.index(ACTIVE)
-    pracownicy_data[i].marker.delete()
-    pracownicy_data.pop(i)
+    name = pracownicy_data[i].name
+    surname = pracownicy_data[i].surname
+
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.pracownicy WHERE name = %s AND surname = %s", (name, surname))
+    db_engine.commit()
+    cursor.close()
+
     pracownik_info(pracownicy_data)
 
 def edit_pracownik(pracownicy_data: list):
@@ -160,13 +261,17 @@ def edit_pracownik(pracownicy_data: list):
     button_dodaj_pracownika.config(text="Zapisz zmiany", command=lambda: update_pracownik(pracownicy_data, i))
 
 def update_pracownik(pracownicy_data: list, i):
-    pracownicy_data[i].name = entry_imie_pracownika.get()
-    pracownicy_data[i].surname = entry_nazwisko_pracownika.get()
-    pracownicy_data[i].city = entry_miasto_pracownika.get()
+    old_name = pracownicy_data[i].name
+    old_surname = pracownicy_data[i].surname
+    new_name = entry_imie_pracownika.get()
+    new_surname = entry_nazwisko_pracownika.get()
+    new_city = entry_miasto_pracownika.get()
 
-    pracownicy_data[i].coords = pracownicy_data[i].get_coordinates()
-    pracownicy_data[i].marker.set_position(pracownicy_data[i].coords[0], pracownicy_data[i].coords[1])
-    pracownicy_data[i].marker.set_text(pracownicy_data[i].name)
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.pracownicy SET name = %s, surname = %s, city = %s WHERE name = %s AND surname = %s"
+    cursor.execute(sql, (new_name, new_surname, new_city, old_name, old_surname))
+    db_engine.commit()
+    cursor.close()
 
     pracownik_info(pracownicy_data)
 
@@ -175,6 +280,47 @@ def update_pracownik(pracownicy_data: list, i):
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
+
+
+def show_pracownik_details(pracownik_data: list):
+    i = list_box_lista_pracownikow.index(ACTIVE)
+    if i < 0:
+        return
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, surname, city FROM public.pracownicy WHERE name = %s AND surname = %s"
+    cursor.execute(sql, (pracownik_data[i].name, pracownik_data[i].surname))
+    data = cursor.fetchone()
+    cursor.close()
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły pracownika: {data[0]}")
+    detail_window.geometry("500x250")
+    detail_window.configure(bg="#eddff7")
+
+    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#eddff7").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#eddff7", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Imię:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#eddff7").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Nazwisko:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#eddff7").grid(row=1, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[2], font=default_font, bg="#eddff7").grid(row=2, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_imie_pracownika.delete(0, END)
+    entry_nazwisko_pracownika.delete(0, END)
+    entry_miasto_pracownika.delete(0, END)
+    entry_imie_pracownika.focus()
+
 
 
 class Incydenty:
@@ -206,27 +352,81 @@ class Incydenty:
 
 def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
-    name:str = entry_nazwa_incydentu.get()
-    place:str = entry_miejsce_incydentu.get()
-    incydenty_data.append(Incydenty(name=name, place=place))
-    print(incydenty_data)
-    sql = f"INSERT INTO public.incydenty(name, place) VALUES ('{name}', '{place}');"
+    name: str = entry_nazwa_incydentu.get()
+    place: str = entry_miejsce_incydentu.get()
+
+    sql = "INSERT INTO public.incydenty(name, place) VALUES (%s, %s);"
+    cursor.execute(sql, (name, place))
+    db_engine.commit()
+    cursor.close()
+
     incydent_info(incydenty_data)
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
-    cursor.execute(sql)
-    db_engine.commit()
 
-def incydent_info (incydenty_info:list):
+
+def show_incydent_details(incydenty_data: list):
+    i = list_box_lista_incydentow.index(ACTIVE)
+    if i < 0:
+        return
+
+    cursor = db_engine.cursor()
+    sql = "SELECT name, place FROM public.incydenty WHERE name = %s"
+    cursor.execute(sql, (incydenty_data[i].name,))
+    data = cursor.fetchone()
+    cursor.close()
+
+    if not data:
+        return
+
+    detail_window = Toplevel(root)
+    detail_window.title(f"Szczegóły incydentu: {data[0]}")
+    detail_window.geometry("500x250")
+    detail_window.configure(bg="#f0c2e3")
+
+    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#f0c2e3").pack(pady=10)
+
+    info_frame = Frame(detail_window, bg="#f0c2e3", padx=20, pady=10)
+    info_frame.pack(fill=BOTH, expand=True)
+
+    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[0], font=default_font, bg="#f0c2e3").grid(row=0, column=1, sticky=W, pady=5)
+
+    Label(info_frame, text="Miejsce:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text=data[1], font=default_font, bg="#f0c2e3").grid(row=1, column=1, sticky=W, pady=5)
+
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+
+    entry_nazwa_incydentu.delete(0, END)
+    entry_miejsce_incydentu.delete(0, END)
+    entry_nazwa_incydentu.focus()
+
+def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
+    for incydent in incydenty_data:
+        incydent.marker.delete()
+    incydenty_data.clear()
+
     list_box_lista_incydentow.delete(0, END)
-    for idx,incydenty in enumerate(incydenty_info):
-        list_box_lista_incydentow.insert(idx, f"{incydenty.name}" )
+    sql = "SELECT name, place FROM public.incydenty"
+    cursor = db_engine.cursor()
+    cursor.execute(sql)
+    db_data = cursor.fetchall()
+    cursor.close()
+
+    for idx, row in enumerate(db_data):
+        incydenty_data.append(Incydenty(name=row[0], place=row[1]))
+        list_box_lista_incydentow.insert(idx, f"{row[0]}")
 
 def delete_incydent(incydenty_data: list):
     i = list_box_lista_incydentow.index(ACTIVE)
-    incydenty_data[i].marker.delete()
-    incydenty_data.pop(i)
+    name = incydenty_data[i].name
+
+    cursor = db_engine.cursor()
+    cursor.execute("DELETE FROM public.incydenty WHERE name = %s", (name,))
+    db_engine.commit()
+    cursor.close()
+
     incydent_info(incydenty_data)
 
 def edit_incydent(incydenty_data: list):
@@ -237,8 +437,15 @@ def edit_incydent(incydenty_data: list):
     button_dodaj_incydent.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i))
 
 def update_incydent(incydenty_data: list, i):
+    old_name = incydenty_data[i].name
     incydenty_data[i].name = entry_nazwa_incydentu.get()
     incydenty_data[i].place = entry_miejsce_incydentu.get()
+
+    cursor = db_engine.cursor()
+    sql = "UPDATE public.incydenty SET name = %s, place = %s WHERE name = %s"
+    cursor.execute(sql, (incydenty_data[i].name, incydenty_data[i].place, old_name))
+    db_engine.commit()
+    cursor.close()
 
     incydenty_data[i].coords = incydenty_data[i].get_coordinates()
     incydenty_data[i].marker.set_position(incydenty_data[i].coords[0], incydenty_data[i].coords[1])
@@ -298,7 +505,7 @@ label_lista_jednostek.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_jednostek = Listbox(ramka_jednostki, font=default_font)
 list_box_lista_jednostek.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font, command=lambda: show_jednostka_details(jednostki))
 buttom_szczegoly_jednostki.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_jednostke = Button(ramka_jednostki, text="Usuń", font=default_font, command=lambda: delete_jednostka(jednostki))
@@ -347,7 +554,7 @@ label_lista_pracownikow.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_pracownikow = Listbox(ramka_pracownicy, font=default_font)
 list_box_lista_pracownikow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font, command=lambda: show_pracownik_details(pracownicy))
 buttom_szczegoly_pracownika.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font, command=lambda: delete_pracownik(pracownicy))
@@ -374,6 +581,9 @@ label_nazwisko_pracownika.grid(row=2, column=0, sticky=W)
 label_miasto_pracownika = Label(ramka_formularz_pracownicy, text="Miasto: ", font=default_font, bg="#eddff7")
 label_miasto_pracownika.grid(row=3, column=0, sticky=W)
 
+label_jednostka_pracownika = Label(ramka_formularz_pracownicy, text="Jednostka policji: ", font=default_font, bg="#eddff7")
+label_jednostka_pracownika.grid(row=4, column=0, sticky=W)
+
 entry_imie_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_imie_pracownika.grid(row=1, column=1, sticky="ew")
 
@@ -383,8 +593,11 @@ entry_nazwisko_pracownika.grid(row=2, column=1, sticky="ew")
 entry_miasto_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_miasto_pracownika.grid(row=3, column=1, sticky="ew")
 
+entry_jednostka_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
+entry_jednostka_pracownika.grid(row=4, column=1, sticky="ew")
+
 button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj pracownika", font=default_font, command=lambda: add_pracownik(pracownicy))
-button_dodaj_pracownika.grid(row=4, column=0, columnspan=2, sticky="ew")
+button_dodaj_pracownika.grid(row=5, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_pracownicy.columnconfigure(1, weight=1)
 
@@ -396,7 +609,7 @@ label_lista_incydentow.grid(row=0, column=0, columnspan=3, sticky="ew")
 list_box_lista_incydentow = Listbox(ramka_incydenty, font=default_font)
 list_box_lista_incydentow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-buttom_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font)
+buttom_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font, command=lambda: show_incydent_details(incydenty))
 buttom_szczegoly_incydentu.grid(row=2, column=0, sticky="ew")
 
 buttom_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font, command=lambda: delete_incydent(incydenty))
@@ -420,40 +633,26 @@ label_nazwa_incydentu.grid(row=1, column=0, sticky=W)
 label_miejsce_incydentu = Label(ramka_formularz_incydenty, text="Miejsce: ", font=default_font, bg="#f0c2e3")
 label_miejsce_incydentu.grid(row=2, column=0, sticky=W)
 
+label_jednostka_incydentu = Label(ramka_formularz_incydenty, text="Jednostka policji: ", font=default_font, bg="#f0c2e3")
+label_jednostka_incydentu.grid(row=3, column=0, sticky=W)
+
 entry_nazwa_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_nazwa_incydentu.grid(row=1, column=1, sticky="ew")
 
-entry_miejsce_incydentu = Entry(ramka_formularz_incydenty)
+entry_miejsce_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_miejsce_incydentu.grid(row=2, column=1, sticky="ew")
-#
-# entry_miasto_pracownika = Entry(ramka_formularz_jednostki)
-# entry_miasto_pracownika.grid(row=3, column=1)
+
+entry_jednostka_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
+entry_jednostka_incydentu.grid(row=3, column=1, sticky="ew")
 
 button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font, command=lambda: add_incydent(incydenty))
-button_dodaj_incydent.grid(row=3, column=0, columnspan=2, sticky="ew")
+button_dodaj_incydent.grid(row=4, column=0, columnspan=2, sticky="ew")
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
-# RAMKA SZCZEGÓŁY OBIEKTU
-label_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Szczegóły obiektu: ", font=label_font, bg="#f7e9f3")
+# RAMKA NAGŁÓWEK MAPY
+label_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Mapa", font=label_font, bg="#f7e9f3")
 label_szczegoly_obiektu.grid(row=0, column=0, columnspan=6, sticky="ew")
 
-# label_imie_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text= "Imie: ", font=default_font, bg="#f7e9f3")
-# label_imie_szczegoly_obiektu.grid(row=1, column=0, sticky="ew")
-#
-# label_imie_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_imie_szczegoly_obiektu_wartosc.grid(row=1, column=1, sticky="ew")
-#
-# label_lokalizacja_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text="Lokalizacja: ", font=default_font, bg="#f7e9f3")
-# label_lokalizacja_szczegoly_obiektu.grid(row=1, column=2, sticky="ew")
-#
-# label_lokalizacja_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_lokalizacja_szczegoly_obiektu_wartosc.grid(row=1, column=3, sticky="ew")
-#
-# label_posty_szczegoly_obiektu = Label(ramka_szczegoly_obiektu, text= "Posty: ", font=default_font, bg="#f7e9f3")
-# label_posty_szczegoly_obiektu.grid(row=1, column=4, sticky="ew")
-#
-# label_posty_szczegoly_obiektu_wartosc = Label(ramka_szczegoly_obiektu, text="...", font=default_font, bg="#f7e9f3")
-# label_posty_szczegoly_obiektu_wartosc.grid(row=1, column=5, sticky="ew")
 
 for i in range(6):
     ramka_szczegoly_obiektu.columnconfigure(i, weight=1)
@@ -466,5 +665,9 @@ map_widget.grid(row=0, column=0, sticky="nsew")
 
 ramka_mapa.columnconfigure(0, weight=1)
 ramka_mapa.rowconfigure(0, weight=1)
+
+jednostki_info(jednostki)
+pracownik_info(pracownicy)
+incydent_info(incydenty)
 
 root.mainloop()
