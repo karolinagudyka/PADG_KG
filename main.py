@@ -212,7 +212,38 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list):
                 list_box_lista_pracownikow.selection_set(idx)
                 list_box_lista_pracownikow.see(idx)
 
+def filtr_incydenty_by_jednostka(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+    jednostka_name = jednostki_data[i].name
 
+    cursor = db_engine.cursor()
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
+    result = cursor.fetchone()
+
+    if not result:
+        cursor.close()
+        return
+
+    unit_id = result[0]
+
+    cursor.execute("SELECT name FROM public.incydenty WHERE unit_id = %s", (unit_id,))
+    wybrane_incydenty = cursor.fetchall()
+    cursor.close()
+
+    list_box_lista_incydentow.selection_clear(0, END)
+
+    for incydent in incydenty:
+        incydent.marker.change_icon(marker_icon_default)
+
+    for assigned in wybrane_incydenty:
+        for idx, incydent in enumerate(incydenty):
+            if incydent.name == assigned[0]:
+                incydent.marker.change_icon(marker_icon_highlighted)
+                list_box_lista_incydentow.selection_set(idx)
+                list_box_lista_incydentow.see(idx)
 
 
 class Pracownicy:
@@ -589,7 +620,7 @@ button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew")
 button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, command=lambda: filtr_pracownicy_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
 button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew")
 
-button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, bg="#c9a9e6", fg="white")
+button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, command=lambda: filtr_incydenty_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
 button_wyswietl_incydenty.grid(row=7, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
