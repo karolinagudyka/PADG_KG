@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import font
+from tkinter import PhotoImage
 import psycopg2
 import tkintermapview
 import webbrowser
@@ -16,13 +17,14 @@ jednostki: list = []
 pracownicy: list = []
 incydenty: list = []
 
+
 class Jednostki:
     def __init__(self, name: str, city: str, street = str):
         self.name = name
         self.city = city
         self.street = street
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
 
     def get_coordinates(self):
         import requests
@@ -177,6 +179,40 @@ def show_jednostka_details(jednostki_data: list):
     entry_miasto_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
 
+def filtr_pracownicy_by_jednostka(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+    jednostka_name = jednostki_data[i].name
+
+    cursor = db_engine.cursor()
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
+    result = cursor.fetchone()
+
+    if not result:
+        cursor.close()
+        return
+
+    unit_id = result[0]
+
+    cursor.execute("SELECT name, surname FROM public.pracownicy WHERE unit_id = %s", (unit_id,))
+    wybrani_pracownicy = cursor.fetchall()
+    cursor.close()
+
+    list_box_lista_pracownikow.selection_clear(0, END)
+
+    for pracownik in pracownicy:
+        pracownik.marker.change_icon(marker_icon_default)
+
+    for assigned in wybrani_pracownicy:
+        for idx, pracownik in enumerate(pracownicy):
+            if pracownik.name == assigned[0] and pracownik.surname == assigned[1]:
+                pracownik.marker.change_icon(marker_icon_highlighted)
+                list_box_lista_pracownikow.selection_set(idx)
+                list_box_lista_pracownikow.see(idx)
+
+
 
 
 class Pracownicy:
@@ -185,7 +221,7 @@ class Pracownicy:
         self.surname = surname
         self.city = city
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
 
     def get_coordinates(self):
         import requests
@@ -280,6 +316,7 @@ def update_pracownik(pracownicy_data: list, i):
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
+    entry_jednostka_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
 
 
@@ -329,7 +366,7 @@ class Incydenty:
         self.name = name
         self.place = place
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
 
     def get_coordinates(self):
         import requests
@@ -457,6 +494,7 @@ def update_incydent(incydenty_data: list, i):
     button_dodaj_incydent.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty))
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
+    entry_jednostka_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
 
 
@@ -468,6 +506,9 @@ root.geometry("1300x900")
 
 default_font = font.Font(family="Times New Roman", size=10)
 label_font = font.Font(family="Times New Roman", size=12, weight="bold")
+
+marker_icon_default = PhotoImage(file="default.png")
+marker_icon_highlighted = PhotoImage(file="highlighted.png")
 
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=1)
@@ -545,7 +586,7 @@ entry_miasto_jednostki.grid(row=3, column=1, sticky="ew")
 button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font, command=lambda: add_jednostki(jednostki))
 button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew")
 
-button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, bg="#c9a9e6", fg="white")
+button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, command=lambda: filtr_pracownicy_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
 button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew")
 
 button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, bg="#c9a9e6", fg="white")
