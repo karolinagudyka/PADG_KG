@@ -169,7 +169,8 @@ def show_jednostka_details(jednostki_data: list):
     Label(info_frame, text="Opis:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=5, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[5], font=default_font, bg="#f2d0d7").grid(row=5, column=1, sticky=W, pady=5)
 
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font, bg="#c9a9e6", fg="white").pack(pady=10)
+
 
     entry_nazwa_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
@@ -543,6 +544,12 @@ entry_miasto_jednostki.grid(row=3, column=1, sticky="ew")
 
 button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font, command=lambda: add_jednostki(jednostki))
 button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew")
+
+button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, bg="#c9a9e6", fg="white")
+button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew")
+
+button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, bg="#c9a9e6", fg="white")
+button_wyswietl_incydenty.grid(row=7, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
 
