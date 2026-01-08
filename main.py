@@ -431,15 +431,22 @@ def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
     name: str = entry_nazwa_incydentu.get()
     place: str = entry_miejsce_incydentu.get()
+    jednostka_name = entry_jednostka_incydentu.get()
 
-    sql = "INSERT INTO public.incydenty(name, place) VALUES (%s, %s);"
-    cursor.execute(sql, (name, place))
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
+    result = cursor.fetchone()
+
+    unit_id = result[0]
+
+    sql = "INSERT INTO public.incydenty(name, place, unit_id) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, place, unit_id))
     db_engine.commit()
     cursor.close()
 
     incydent_info(incydenty_data)
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
+    entry_jednostka_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
 
 
