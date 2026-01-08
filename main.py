@@ -279,9 +279,16 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     name:str = entry_imie_pracownika.get()
     surname:str = entry_nazwisko_pracownika.get()
     city:str = entry_miasto_pracownika.get()
+    jednostka_name = entry_jednostka_pracownika.get()
 
-    sql = "INSERT INTO public.pracownicy(name, surname, city) VALUES (%s, %s, %s);"
-    cursor.execute(sql, (name, surname, city))
+    # pobranie ID jednostki
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
+    result = cursor.fetchone()
+
+    unit_id = result[0]
+
+    sql = "INSERT INTO public.pracownicy(name, surname, city, unit_id) VALUES (%s, %s, %s, %s);"
+    cursor.execute(sql, (name, surname, city, unit_id))
     db_engine.commit()
     cursor.close()
 
@@ -289,6 +296,7 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
+    entry_jednostka_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
 
 
