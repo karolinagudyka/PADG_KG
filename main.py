@@ -245,6 +245,14 @@ def filtr_incydenty_by_jednostka(jednostki_data: list):
                 list_box_lista_incydentow.selection_set(idx)
                 list_box_lista_incydentow.see(idx)
 
+def clear_highlights():
+    list_box_lista_pracownikow.selection_clear(0, END)
+    list_box_lista_incydentow.selection_clear(0, END)
+    for pracownik in pracownicy:
+        pracownik.marker.change_icon(marker_icon_default)
+    for incydent in incydenty:
+        incydent.marker.change_icon(marker_icon_default)
+
 
 class Pracownicy:
     def __init__(self, name: str, surname: str, city = str):
@@ -637,6 +645,9 @@ button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew")
 
 button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, command=lambda: filtr_incydenty_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
 button_wyswietl_incydenty.grid(row=7, column=0, columnspan=2, sticky="ew")
+
+button_wyczysc_zaznaczenia = Button(ramka_formularz_jednostki, text="Wyczyść zaznaczenia", font=default_font, command=clear_highlights, bg="#ffa07a", fg="white")
+button_wyczysc_zaznaczenia.grid(row=8, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
 
