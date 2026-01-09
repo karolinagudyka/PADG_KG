@@ -1,6 +1,7 @@
 from tkinter import *
 from tkinter import font
 from tkinter import PhotoImage
+from tkinter import messagebox
 import psycopg2
 import tkintermapview
 import webbrowser
@@ -24,7 +25,10 @@ class Jednostki:
         self.city = city
         self.street = street
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_jednostki, text_color="#ff8c00" )
+        if self.coords:
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_jednostki, text_color="#ff8c00" )
+        else:
+            self.marker = None
 
     def get_coordinates(self):
         import requests
@@ -35,10 +39,17 @@ class Jednostki:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=5)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())
+
+        latitude_elements = response_html.select('.latitude')
+        longitude_elements = response_html.select('.longitude')
+
+        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
+            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.city}")
+            return None
 
         latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
         # print(latitude)
@@ -65,7 +76,8 @@ def add_jednostki(jednostki_data:list, db_engine = db_engine)->None:
 
 def jednostki_info (jednostki_data:list, db_engine=db_engine):
     for jednostka in jednostki_data:
-        jednostka.marker.delete()
+        if jednostka.marker:
+            jednostka.marker.delete()
     jednostki_data.clear()
 
     list_box_lista_jednostek.delete(0, END)
@@ -75,11 +87,21 @@ def jednostki_info (jednostki_data:list, db_engine=db_engine):
     db_data = cursor.fetchall()
     cursor.close()
 
-    for idx,row in enumerate(db_data):
-        jednostki_data.append(Jednostki(name=row[0], city=row[1], street=row[2]))
+    failed_coords = []
+    for idx, row in enumerate(db_data):
+        jednostka = Jednostki(name=row[0], city=row[1], street=row[2])
+        jednostki_data.append(jednostka)
         list_box_lista_jednostek.insert(idx, f"{row[0]}")
 
+        if not jednostka.coords:
+            failed_coords.append(row[0])
 
+    if failed_coords:
+        messagebox.showwarning(
+            "Ostrzeżenie",
+            f"Nie udało się pobrać współrzędnych dla:\n" + "\n".join(failed_coords) +
+            "\n\nTe jednostki nie będą widoczne na mapie."
+        )
 def delete_jednostka(jednostki_data: list):
     i = list_box_lista_jednostek.index(ACTIVE)
     name = jednostki_data[i].name
@@ -203,11 +225,12 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list):
     list_box_lista_pracownikow.selection_clear(0, END)
 
     for pracownik in pracownicy:
-        pracownik.marker.change_icon(marker_icon_default_pracownicy)
+        if pracownik.marker:
+            pracownik.marker.change_icon(marker_icon_default_pracownicy)
 
     for assigned in wybrani_pracownicy:
         for idx, pracownik in enumerate(pracownicy):
-            if pracownik.name == assigned[0] and pracownik.surname == assigned[1]:
+            if pracownik.name == assigned[0] and pracownik.surname == assigned[1] and pracownik.marker:
                 pracownik.marker.change_icon(marker_icon_highlighted)
                 list_box_lista_pracownikow.selection_set(idx)
                 list_box_lista_pracownikow.see(idx)
@@ -236,11 +259,12 @@ def filtr_incydenty_by_jednostka(jednostki_data: list):
     list_box_lista_incydentow.selection_clear(0, END)
 
     for incydent in incydenty:
-        incydent.marker.change_icon(marker_icon_default_incydenty)
+        if incydent.marker:
+            incydent.marker.change_icon(marker_icon_default_incydenty)
 
     for assigned in wybrane_incydenty:
         for idx, incydent in enumerate(incydenty):
-            if incydent.name == assigned[0]:
+            if incydent.name == assigned[0] and incydent.marker:
                 incydent.marker.change_icon(marker_icon_highlighted)
                 list_box_lista_incydentow.selection_set(idx)
                 list_box_lista_incydentow.see(idx)
@@ -249,9 +273,11 @@ def clear_highlights():
     list_box_lista_pracownikow.selection_clear(0, END)
     list_box_lista_incydentow.selection_clear(0, END)
     for pracownik in pracownicy:
-        pracownik.marker.change_icon(marker_icon_default_pracownicy)
+        if pracownik.marker:
+            pracownik.marker.change_icon(marker_icon_default_pracownicy)
     for incydent in incydenty:
-        incydent.marker.change_icon(marker_icon_default_incydenty)
+        if incydent.marker:
+            incydent.marker.change_icon(marker_icon_default_incydenty)
 
 
 class Pracownicy:
@@ -260,7 +286,10 @@ class Pracownicy:
         self.surname = surname
         self.city = city
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_pracownicy, text_color="#4169e1")
+        if self.coords:
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_pracownicy, text_color="#4169e1")
+        else:
+            self.marker = None
 
     def get_coordinates(self):
         import requests
@@ -271,16 +300,24 @@ class Pracownicy:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=5)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())
+
+        latitude_elements = response_html.select('.latitude')
+        longitude_elements = response_html.select('.longitude')
+
+        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
+            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.city}")
+            return None
 
         latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
         # print(latitude)
         longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
         # print(longitude)
         return [latitude, longitude]
+
 
 def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
@@ -310,7 +347,8 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
 
 def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
     for pracownik in pracownicy_data:
-        pracownik.marker.delete()
+        if pracownik.marker:
+            pracownik.marker.delete()
     pracownicy_data.clear()
 
     list_box_lista_pracownikow.delete(0, END)
@@ -320,9 +358,23 @@ def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
     db_data = cursor.fetchall()
     cursor.close()
 
-    for idx,row in enumerate(db_data):
-        pracownicy_data.append(Pracownicy(name=row[0], surname=row[1], city=row[2]))
-        list_box_lista_pracownikow.insert(idx, f"{row[0]} {row[1]}" )
+    failed_coords = []
+
+    for idx, row in enumerate(db_data):
+        pracownik = Pracownicy(name=row[0], surname=row[1], city=row[2])
+        pracownicy_data.append(pracownik)
+        list_box_lista_pracownikow.insert(idx, f"{row[0]} {row[1]}")
+
+        if not pracownik.coords:
+            failed_coords.append(f"{row[0]} {row[1]}")
+
+    if failed_coords:
+        messagebox.showwarning(
+            "Brak lokalizacji – pracownicy",
+            "Nie udało się pobrać współrzędnych dla:\n\n"
+            + "\n".join(failed_coords)
+            + "\n\nCi pracownicy nie będą widoczni na mapie."
+        )
 
 def delete_pracownik(pracownicy_data: list):
     i = list_box_lista_pracownikow.index(ACTIVE)
@@ -413,7 +465,10 @@ class Incydenty:
         self.name = name
         self.place = place
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_incydenty, text_color="#8a2be2")
+        if self.coords:
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_incydenty, text_color="#8a2be2")
+        else:
+            self.marker = None
 
     def get_coordinates(self):
         import requests
@@ -424,16 +479,24 @@ class Incydenty:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=5)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())
+
+        latitude_elements = response_html.select('.latitude')
+        longitude_elements = response_html.select('.longitude')
+
+        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
+            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.place}")
+            return None
 
         latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
         # print(latitude)
         longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
         # print(longitude)
         return [latitude, longitude]
+
 
 def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
@@ -496,7 +559,8 @@ def show_incydent_details(incydenty_data: list):
 
 def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
     for incydent in incydenty_data:
-        incydent.marker.delete()
+        if incydent.marker:
+            incydent.marker.delete()
     incydenty_data.clear()
 
     list_box_lista_incydentow.delete(0, END)
@@ -506,9 +570,23 @@ def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
     db_data = cursor.fetchall()
     cursor.close()
 
+    failed_coords = []
+
     for idx, row in enumerate(db_data):
-        incydenty_data.append(Incydenty(name=row[0], place=row[1]))
+        incydent = Incydenty(name=row[0], place=row[1])
+        incydenty_data.append(incydent)
         list_box_lista_incydentow.insert(idx, f"{row[0]}")
+
+        if not incydent.coords:
+            failed_coords.append(row[0])
+
+    if failed_coords:
+        messagebox.showwarning(
+            "Brak lokalizacji – incydenty",
+            "Nie udało się pobrać współrzędnych dla:\n\n"
+            + "\n".join(failed_coords)
+            + "\n\nTe incydenty nie będą widoczne na mapie."
+        )
 
 def delete_incydent(incydenty_data: list):
     i = list_box_lista_incydentow.index(ACTIVE)
