@@ -24,7 +24,7 @@ class Jednostki:
         self.city = city
         self.street = street
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_jednostki, text_color="#ff8c00" )
 
     def get_coordinates(self):
         import requests
@@ -203,7 +203,7 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list):
     list_box_lista_pracownikow.selection_clear(0, END)
 
     for pracownik in pracownicy:
-        pracownik.marker.change_icon(marker_icon_default)
+        pracownik.marker.change_icon(marker_icon_default_pracownicy)
 
     for assigned in wybrani_pracownicy:
         for idx, pracownik in enumerate(pracownicy):
@@ -236,7 +236,7 @@ def filtr_incydenty_by_jednostka(jednostki_data: list):
     list_box_lista_incydentow.selection_clear(0, END)
 
     for incydent in incydenty:
-        incydent.marker.change_icon(marker_icon_default)
+        incydent.marker.change_icon(marker_icon_default_incydenty)
 
     for assigned in wybrane_incydenty:
         for idx, incydent in enumerate(incydenty):
@@ -249,9 +249,9 @@ def clear_highlights():
     list_box_lista_pracownikow.selection_clear(0, END)
     list_box_lista_incydentow.selection_clear(0, END)
     for pracownik in pracownicy:
-        pracownik.marker.change_icon(marker_icon_default)
+        pracownik.marker.change_icon(marker_icon_default_pracownicy)
     for incydent in incydenty:
-        incydent.marker.change_icon(marker_icon_default)
+        incydent.marker.change_icon(marker_icon_default_incydenty)
 
 
 class Pracownicy:
@@ -260,7 +260,7 @@ class Pracownicy:
         self.surname = surname
         self.city = city
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_pracownicy, text_color="#4169e1")
 
     def get_coordinates(self):
         import requests
@@ -413,7 +413,7 @@ class Incydenty:
         self.name = name
         self.place = place
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_incydenty, text_color="#8a2be2")
 
     def get_coordinates(self):
         import requests
@@ -561,7 +561,9 @@ root.geometry("1300x900")
 default_font = font.Font(family="Times New Roman", size=10)
 label_font = font.Font(family="Times New Roman", size=12, weight="bold")
 
-marker_icon_default = PhotoImage(file="default.png")
+marker_icon_default_jednostki = PhotoImage(file="jednostki.png")
+marker_icon_default_pracownicy = PhotoImage(file="pracownicy.png")
+marker_icon_default_incydenty = PhotoImage(file="incydenty.png")
 marker_icon_highlighted = PhotoImage(file="highlighted.png")
 
 root.columnconfigure(0, weight=1)
