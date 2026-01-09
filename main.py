@@ -1,5 +1,6 @@
 from tkinter import *
 from tkinter import font
+from tkinter import PhotoImage
 import psycopg2
 import tkintermapview
 import webbrowser
@@ -16,13 +17,14 @@ jednostki: list = []
 pracownicy: list = []
 incydenty: list = []
 
+
 class Jednostki:
     def __init__(self, name: str, city: str, street = str):
         self.name = name
         self.city = city
         self.street = street
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_jednostki, text_color="#ff8c00" )
 
     def get_coordinates(self):
         import requests
@@ -169,13 +171,87 @@ def show_jednostka_details(jednostki_data: list):
     Label(info_frame, text="Opis:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=5, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[5], font=default_font, bg="#f2d0d7").grid(row=5, column=1, sticky=W, pady=5)
 
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
+    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font, bg="#c9a9e6", fg="white").pack(pady=10)
+
 
     entry_nazwa_jednostki.delete(0, END)
     entry_ulica_jednostki.delete(0, END)
     entry_miasto_jednostki.delete(0, END)
     entry_nazwa_jednostki.focus()
 
+def filtr_pracownicy_by_jednostka(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+    jednostka_name = jednostki_data[i].name
+
+    cursor = db_engine.cursor()
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
+    result = cursor.fetchone()
+
+    if not result:
+        cursor.close()
+        return
+
+    unit_id = result[0]
+
+    cursor.execute("SELECT name, surname FROM public.pracownicy WHERE unit_id = %s", (unit_id,))
+    wybrani_pracownicy = cursor.fetchall()
+    cursor.close()
+
+    list_box_lista_pracownikow.selection_clear(0, END)
+
+    for pracownik in pracownicy:
+        pracownik.marker.change_icon(marker_icon_default_pracownicy)
+
+    for assigned in wybrani_pracownicy:
+        for idx, pracownik in enumerate(pracownicy):
+            if pracownik.name == assigned[0] and pracownik.surname == assigned[1]:
+                pracownik.marker.change_icon(marker_icon_highlighted)
+                list_box_lista_pracownikow.selection_set(idx)
+                list_box_lista_pracownikow.see(idx)
+
+def filtr_incydenty_by_jednostka(jednostki_data: list):
+    i = list_box_lista_jednostek.curselection()
+    if not i:
+        return
+    i = i[0]
+    jednostka_name = jednostki_data[i].name
+
+    cursor = db_engine.cursor()
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
+    result = cursor.fetchone()
+
+    if not result:
+        cursor.close()
+        return
+
+    unit_id = result[0]
+
+    cursor.execute("SELECT name FROM public.incydenty WHERE unit_id = %s", (unit_id,))
+    wybrane_incydenty = cursor.fetchall()
+    cursor.close()
+
+    list_box_lista_incydentow.selection_clear(0, END)
+
+    for incydent in incydenty:
+        incydent.marker.change_icon(marker_icon_default_incydenty)
+
+    for assigned in wybrane_incydenty:
+        for idx, incydent in enumerate(incydenty):
+            if incydent.name == assigned[0]:
+                incydent.marker.change_icon(marker_icon_highlighted)
+                list_box_lista_incydentow.selection_set(idx)
+                list_box_lista_incydentow.see(idx)
+
+def clear_highlights():
+    list_box_lista_pracownikow.selection_clear(0, END)
+    list_box_lista_incydentow.selection_clear(0, END)
+    for pracownik in pracownicy:
+        pracownik.marker.change_icon(marker_icon_default_pracownicy)
+    for incydent in incydenty:
+        incydent.marker.change_icon(marker_icon_default_incydenty)
 
 
 class Pracownicy:
@@ -184,7 +260,7 @@ class Pracownicy:
         self.surname = surname
         self.city = city
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_pracownicy, text_color="#4169e1")
 
     def get_coordinates(self):
         import requests
@@ -211,9 +287,16 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     name:str = entry_imie_pracownika.get()
     surname:str = entry_nazwisko_pracownika.get()
     city:str = entry_miasto_pracownika.get()
+    jednostka_name = entry_jednostka_pracownika.get()
 
-    sql = "INSERT INTO public.pracownicy(name, surname, city) VALUES (%s, %s, %s);"
-    cursor.execute(sql, (name, surname, city))
+    # pobranie ID jednostki
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
+    result = cursor.fetchone()
+
+    unit_id = result[0]
+
+    sql = "INSERT INTO public.pracownicy(name, surname, city, unit_id) VALUES (%s, %s, %s, %s);"
+    cursor.execute(sql, (name, surname, city, unit_id))
     db_engine.commit()
     cursor.close()
 
@@ -221,6 +304,7 @@ def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
+    entry_jednostka_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
 
 
@@ -279,6 +363,7 @@ def update_pracownik(pracownicy_data: list, i):
     entry_imie_pracownika.delete(0, END)
     entry_nazwisko_pracownika.delete(0, END)
     entry_miasto_pracownika.delete(0, END)
+    entry_jednostka_pracownika.delete(0, END)
     entry_imie_pracownika.focus()
 
 
@@ -328,7 +413,7 @@ class Incydenty:
         self.name = name
         self.place = place
         self.coords = self.get_coordinates()
-        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name)
+        self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_incydenty, text_color="#8a2be2")
 
     def get_coordinates(self):
         import requests
@@ -354,15 +439,22 @@ def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
     cursor = db_engine.cursor()
     name: str = entry_nazwa_incydentu.get()
     place: str = entry_miejsce_incydentu.get()
+    jednostka_name = entry_jednostka_incydentu.get()
 
-    sql = "INSERT INTO public.incydenty(name, place) VALUES (%s, %s);"
-    cursor.execute(sql, (name, place))
+    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
+    result = cursor.fetchone()
+
+    unit_id = result[0]
+
+    sql = "INSERT INTO public.incydenty(name, place, unit_id) VALUES (%s, %s, %s);"
+    cursor.execute(sql, (name, place, unit_id))
     db_engine.commit()
     cursor.close()
 
     incydent_info(incydenty_data)
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
+    entry_jednostka_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
 
 
@@ -456,6 +548,7 @@ def update_incydent(incydenty_data: list, i):
     button_dodaj_incydent.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty))
     entry_nazwa_incydentu.delete(0, END)
     entry_miejsce_incydentu.delete(0, END)
+    entry_jednostka_incydentu.delete(0, END)
     entry_nazwa_incydentu.focus()
 
 
@@ -467,6 +560,11 @@ root.geometry("1300x900")
 
 default_font = font.Font(family="Times New Roman", size=10)
 label_font = font.Font(family="Times New Roman", size=12, weight="bold")
+
+marker_icon_default_jednostki = PhotoImage(file="jednostki.png")
+marker_icon_default_pracownicy = PhotoImage(file="pracownicy.png")
+marker_icon_default_incydenty = PhotoImage(file="incydenty.png")
+marker_icon_highlighted = PhotoImage(file="highlighted.png")
 
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=1)
@@ -543,6 +641,15 @@ entry_miasto_jednostki.grid(row=3, column=1, sticky="ew")
 
 button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font, command=lambda: add_jednostki(jednostki))
 button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew")
+
+button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, command=lambda: filtr_pracownicy_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
+button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew")
+
+button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, command=lambda: filtr_incydenty_by_jednostka(jednostki), bg="#c9a9e6", fg="white")
+button_wyswietl_incydenty.grid(row=7, column=0, columnspan=2, sticky="ew")
+
+button_wyczysc_zaznaczenia = Button(ramka_formularz_jednostki, text="Wyczyść zaznaczenia", font=default_font, command=clear_highlights, bg="#ffa07a", fg="white")
+button_wyczysc_zaznaczenia.grid(row=8, column=0, columnspan=2, sticky="ew")
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
 
