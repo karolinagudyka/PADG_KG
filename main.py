@@ -97,11 +97,8 @@ def jednostki_info (jednostki_data:list, db_engine=db_engine):
             failed_coords.append(row[0])
 
     if failed_coords:
-        messagebox.showwarning(
-            "Ostrzeżenie",
-            f"Nie udało się pobrać współrzędnych dla:\n" + "\n".join(failed_coords) +
-            "\n\nTe jednostki nie będą widoczne na mapie."
-        )
+        messagebox.showwarning("Brak lokalizacji – jednostki", "Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe jednostki nie będą widoczne na mapie.")
+
 def delete_jednostka(jednostki_data: list):
     i = list_box_lista_jednostek.index(ACTIVE)
     name = jednostki_data[i].name
@@ -153,7 +150,7 @@ def show_jednostka_details(jednostki_data: list):
     i = i[0]
 
     cursor = db_engine.cursor()
-    sql = "SELECT name, city, street, logo_url, website_url, description FROM public.jednostki WHERE name = %s"
+    sql = "SELECT name, city, street, website_url, description FROM public.jednostki WHERE name = %s"
     cursor.execute(sql, (jednostki_data[i].name,))
     data = cursor.fetchone()
     cursor.close()
@@ -162,7 +159,7 @@ def show_jednostka_details(jednostki_data: list):
 
     detail_window = Toplevel(root)
     detail_window.title(f"Szczegóły jednostki: {data[0]}")
-    detail_window.geometry("800x650")
+    detail_window.geometry("800x450")
     detail_window.configure(bg="#f2d0d7")
 
     Label(detail_window, text=f"Szczegóły jednostki", font=label_font, bg="#f2d0d7").pack(pady=10)
@@ -170,28 +167,24 @@ def show_jednostka_details(jednostki_data: list):
     info_frame = Frame(detail_window, bg="#f2d0d7", padx=20, pady=10)
     info_frame.pack(fill=BOTH, expand=True)
 
-    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Nazwa:", font=label_font, bg="#f2d0d7").grid(row=0, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[0], font=default_font, bg="#f2d0d7").grid(row=0, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Miasto:", font=label_font, bg="#f2d0d7").grid(row=1, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[1], font=default_font, bg="#f2d0d7").grid(row=1, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Ulica:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Ulica:", font=label_font, bg="#f2d0d7").grid(row=2, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[2], font=default_font, bg="#f2d0d7").grid(row=2, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Logo:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=3, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Strona internetowa:", font=label_font, bg="#f2d0d7").grid(row=3, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[3], font=default_font, bg="#f2d0d7").grid(row=3, column=1, sticky=W, pady=5)
+    link_label = Label(info_frame, text=data[3], font=default_font, fg="blue", cursor="hand2", bg="#f2d0d7")
+    link_label.grid(row=3, column=1, sticky=W)
 
+    link_label.bind("<Button-1>", lambda e: webbrowser.open(data[3]))
 
-    Label(info_frame, text="Strona internetowa:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=4, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Opis:", font=label_font,  bg="#f2d0d7").grid(row=4, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[4], font=default_font, bg="#f2d0d7").grid(row=4, column=1, sticky=W, pady=5)
-    link_label = Label(info_frame, text=data[4], font=default_font, fg="blue", cursor="hand2", bg="#f2d0d7")
-    link_label.grid(row=4, column=1, sticky=W)
-
-    link_label.bind("<Button-1>", lambda e: webbrowser.open(data[4]))
-
-    Label(info_frame, text="Opis:", font=("Times New Roman", 11, "bold"), bg="#f2d0d7").grid(row=5, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[5], font=default_font, bg="#f2d0d7").grid(row=5, column=1, sticky=W, pady=5)
 
     Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font, bg="#c9a9e6", fg="white").pack(pady=10)
 
@@ -369,12 +362,7 @@ def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
             failed_coords.append(f"{row[0]} {row[1]}")
 
     if failed_coords:
-        messagebox.showwarning(
-            "Brak lokalizacji – pracownicy",
-            "Nie udało się pobrać współrzędnych dla:\n\n"
-            + "\n".join(failed_coords)
-            + "\n\nCi pracownicy nie będą widoczni na mapie."
-        )
+        messagebox.showwarning("Brak lokalizacji – pracownicy","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nCi pracownicy nie będą widoczni na mapie.")
 
 def delete_pracownik(pracownicy_data: list):
     i = list_box_lista_pracownikow.index(ACTIVE)
@@ -442,13 +430,13 @@ def show_pracownik_details(pracownik_data: list):
     info_frame = Frame(detail_window, bg="#eddff7", padx=20, pady=10)
     info_frame.pack(fill=BOTH, expand=True)
 
-    Label(info_frame, text="Imię:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Imię:", font=label_font, bg="#eddff7").grid(row=0, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[0], font=default_font, bg="#eddff7").grid(row=0, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Nazwisko:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Nazwisko:", font=label_font, bg="#eddff7").grid(row=1, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[1], font=default_font, bg="#eddff7").grid(row=1, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Miasto:", font=("Times New Roman", 11, "bold"), bg="#eddff7").grid(row=2, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Miasto:", font=label_font, bg="#eddff7").grid(row=2, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[2], font=default_font, bg="#eddff7").grid(row=2, column=1, sticky=W, pady=5)
 
     Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
@@ -545,10 +533,10 @@ def show_incydent_details(incydenty_data: list):
     info_frame = Frame(detail_window, bg="#f0c2e3", padx=20, pady=10)
     info_frame.pack(fill=BOTH, expand=True)
 
-    Label(info_frame, text="Nazwa:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=0, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Nazwa:", font=label_font, bg="#f0c2e3").grid(row=0, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[0], font=default_font, bg="#f0c2e3").grid(row=0, column=1, sticky=W, pady=5)
 
-    Label(info_frame, text="Miejsce:", font=("Times New Roman", 11, "bold"), bg="#f0c2e3").grid(row=1, column=0, sticky=W, pady=5)
+    Label(info_frame, text="Miejsce:", font=label_font, bg="#f0c2e3").grid(row=1, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[1], font=default_font, bg="#f0c2e3").grid(row=1, column=1, sticky=W, pady=5)
 
     Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
@@ -582,11 +570,7 @@ def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
 
     if failed_coords:
         messagebox.showwarning(
-            "Brak lokalizacji – incydenty",
-            "Nie udało się pobrać współrzędnych dla:\n\n"
-            + "\n".join(failed_coords)
-            + "\n\nTe incydenty nie będą widoczne na mapie."
-        )
+            "Brak lokalizacji – incydenty","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe incydenty nie będą widoczne na mapie.")
 
 def delete_incydent(incydenty_data: list):
     i = list_box_lista_incydentow.index(ACTIVE)
@@ -637,7 +621,7 @@ root.title("Projekt systemu do zarządzania jednostkami policji i policjantami p
 root.geometry("1500x900")
 
 default_font = font.Font(family="Century Gothic", size=10)
-label_font = font.Font(family="Century Gothic", size=10, weight="bold")
+label_font = font.Font(family="Century Gothic", size=12, weight="bold")
 
 marker_icon_default_jednostki = PhotoImage(file="jednostki.png")
 marker_icon_default_pracownicy = PhotoImage(file="pracownicy.png")
@@ -840,7 +824,7 @@ button_dodaj_incydent.grid(row=4, column=0, columnspan=2, sticky="ew", padx=4, p
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
 # RAMKA NAGŁÓWEK MAPY
-label_naglowek_mapy = Label(ramka_naglowek_mapy, text="Mapa", image=map_icon, compound = LEFT, font=("Segoe UI", 14, "bold"), bg="#f7e9f3", fg="#4b0082", padx=10, pady=5)
+label_naglowek_mapy = Label(ramka_naglowek_mapy, text="Mapa", image=map_icon, compound = LEFT, font=label_font, bg="#f7e9f3", fg="#4b0082", padx=10, pady=5)
 label_naglowek_mapy.grid(row=0, column=0, columnspan=6, sticky="ew")
 ramka_naglowek_mapy.config(bg="#ffffff", highlightbackground="#f7e9f3", highlightthickness=2, padx=5, pady=5)
 
