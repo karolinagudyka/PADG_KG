@@ -1,620 +1,12 @@
-from tkinter import *
-from tkinter import font
-from tkinter import PhotoImage
-from tkinter import messagebox
-import psycopg2
 import tkintermapview
-import webbrowser
-
-db_engine = psycopg2.connect(
-    user="postgres",
-    database="jednostki_policji",
-    password="postgres",
-    port="5432",
-    host="localhost"
-)
+from gui_jednostki import *
+from gui_pracownicy import *
+from gui_incydenty import *
+from tkinter import font, PhotoImage
 
 jednostki: list = []
 pracownicy: list = []
 incydenty: list = []
-
-
-class Jednostki:
-    def __init__(self, name: str, city: str, street = str):
-        self.name = name
-        self.city = city
-        self.street = street
-        self.coords = self.get_coordinates()
-        if self.coords:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_jednostki, text_color="#ff8c00" )
-        else:
-            self.marker = None
-
-    def get_coordinates(self):
-        import requests
-        from bs4 import BeautifulSoup
-        url: str = f'https://pl.wikipedia.org/wiki/{self.city}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/123.0 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=5)
-        # print(response.text)
-        response_html = BeautifulSoup(response.text, 'html.parser')
-        # print(response_html.prettify())
-
-        latitude_elements = response_html.select('.latitude')
-        longitude_elements = response_html.select('.longitude')
-
-        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
-            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.city}")
-            return None
-
-        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
-        # print(latitude)
-        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
-        # print(longitude)
-        return [latitude, longitude]
-
-def add_jednostki(jednostki_data:list, db_engine = db_engine)->None:
-    cursor = db_engine.cursor()
-    name:str = entry_nazwa_jednostki.get()
-    city:str = entry_miasto_jednostki.get()
-    street:str = entry_ulica_jednostki.get()
-
-    sql = "INSERT INTO public.jednostki(name, city, street) VALUES (%s, %s, %s);"
-    cursor.execute(sql, (name, city, street))
-    db_engine.commit()
-    cursor.close()
-
-    jednostki_info(jednostki_data)
-    entry_nazwa_jednostki.delete(0, END)
-    entry_miasto_jednostki.delete(0, END)
-    entry_ulica_jednostki.delete(0, END)
-    entry_nazwa_jednostki.focus()
-
-def jednostki_info (jednostki_data:list, db_engine=db_engine):
-    for jednostka in jednostki_data:
-        if jednostka.marker:
-            jednostka.marker.delete()
-    jednostki_data.clear()
-
-    list_box_lista_jednostek.delete(0, END)
-    sql = "SELECT name, city, street FROM public.jednostki"
-    cursor = db_engine.cursor()
-    cursor.execute(sql)
-    db_data = cursor.fetchall()
-    cursor.close()
-
-    failed_coords = []
-    for idx, row in enumerate(db_data):
-        jednostka = Jednostki(name=row[0], city=row[1], street=row[2])
-        jednostki_data.append(jednostka)
-        list_box_lista_jednostek.insert(idx, f"  {row[0]}")
-
-        if not jednostka.coords:
-            failed_coords.append(row[0])
-
-    if failed_coords:
-        messagebox.showwarning("Brak lokalizacji – jednostki", "Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe jednostki nie będą widoczne na mapie.")
-
-def delete_jednostka(jednostki_data: list):
-    i = list_box_lista_jednostek.index(ACTIVE)
-    name = jednostki_data[i].name
-
-    cursor = db_engine.cursor()
-    cursor.execute("DELETE FROM public.jednostki WHERE name = %s", (name,))
-    db_engine.commit()
-    cursor.close()
-
-    jednostki_info(jednostki_data)
-
-def edit_jednostki(jednostki_data: list):
-    i = list_box_lista_jednostek.index(ACTIVE)
-    entry_nazwa_jednostki.insert(0, jednostki_data[i].name)
-    entry_miasto_jednostki.insert(0, jednostki_data[i].city)
-    entry_ulica_jednostki.insert(0, jednostki_data[i].street)
-
-    button_dodaj_jednostke.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i))
-
-def update_jednostki(jednostki_data: list, i):
-    old_name = jednostki_data[i].name
-    jednostki_data[i].name = entry_nazwa_jednostki.get()
-    jednostki_data[i].city = entry_miasto_jednostki.get()
-    jednostki_data[i].street = entry_ulica_jednostki.get()
-
-    cursor = db_engine.cursor()
-    sql = "UPDATE public.jednostki SET name = %s, city = %s, street = %s WHERE name = %s"
-    cursor.execute(sql, (jednostki_data[i].name, jednostki_data[i].city, jednostki_data[i].street, old_name))
-    db_engine.commit()
-    cursor.close()
-
-    jednostki_data[i].coords = jednostki_data[i].get_coordinates()
-    jednostki_data[i].marker.set_position(jednostki_data[i].coords[0], jednostki_data[i].coords[1])
-    jednostki_data[i].marker.set_text(jednostki_data[i].name)
-
-    jednostki_info(jednostki_data)
-
-    button_dodaj_jednostke.config(text="Dodaj jednostkę", command=lambda: add_jednostki(jednostki))
-    entry_nazwa_jednostki.delete(0, END)
-    entry_miasto_jednostki.delete(0, END)
-    entry_ulica_jednostki.delete(0, END)
-    entry_nazwa_jednostki.focus()
-
-
-def show_jednostka_details(jednostki_data: list):
-    i = list_box_lista_jednostek.curselection()
-    if not i:
-        return
-    i = i[0]
-
-    cursor = db_engine.cursor()
-    sql = "SELECT name, city, street, website_url, description FROM public.jednostki WHERE name = %s"
-    cursor.execute(sql, (jednostki_data[i].name,))
-    data = cursor.fetchone()
-    cursor.close()
-    if not data:
-        return
-
-    detail_window = Toplevel(root)
-    detail_window.title(f"Szczegóły jednostki: {data[0]}")
-    detail_window.geometry("800x450")
-    detail_window.configure(bg="#f2d0d7")
-
-    Label(detail_window, text=f"Szczegóły jednostki", font=label_font, bg="#f2d0d7").pack(pady=10)
-
-    info_frame = Frame(detail_window, bg="#f2d0d7", padx=20, pady=10)
-    info_frame.pack(fill=BOTH, expand=True)
-
-    Label(info_frame, text="Nazwa:", font=label_font, bg="#f2d0d7").grid(row=0, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[0], font=default_font, bg="#f2d0d7").grid(row=0, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Miasto:", font=label_font, bg="#f2d0d7").grid(row=1, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[1], font=default_font, bg="#f2d0d7").grid(row=1, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Ulica:", font=label_font, bg="#f2d0d7").grid(row=2, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[2], font=default_font, bg="#f2d0d7").grid(row=2, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Strona internetowa:", font=label_font, bg="#f2d0d7").grid(row=3, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[3], font=default_font, bg="#f2d0d7").grid(row=3, column=1, sticky=W, pady=5)
-    link_label = Label(info_frame, text=data[3], font=default_font, fg="blue", cursor="hand2", bg="#f2d0d7")
-    link_label.grid(row=3, column=1, sticky=W)
-
-    link_label.bind("<Button-1>", lambda e: webbrowser.open(data[3]))
-
-    Label(info_frame, text="Opis:", font=label_font,  bg="#f2d0d7").grid(row=4, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[4], font=default_font, bg="#f2d0d7").grid(row=4, column=1, sticky=W, pady=5)
-
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font, bg="#c9a9e6", fg="white").pack(pady=10)
-
-
-    entry_nazwa_jednostki.delete(0, END)
-    entry_ulica_jednostki.delete(0, END)
-    entry_miasto_jednostki.delete(0, END)
-    entry_nazwa_jednostki.focus()
-
-def filtr_pracownicy_by_jednostka(jednostki_data: list):
-    i = list_box_lista_jednostek.curselection()
-    if not i:
-        return
-    i = i[0]
-    jednostka_name = jednostki_data[i].name
-
-    cursor = db_engine.cursor()
-    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
-    result = cursor.fetchone()
-
-    if not result:
-        cursor.close()
-        return
-
-    unit_id = result[0]
-
-    cursor.execute("SELECT name, surname FROM public.pracownicy WHERE unit_id = %s", (unit_id,))
-    wybrani_pracownicy = cursor.fetchall()
-    cursor.close()
-
-    list_box_lista_pracownikow.selection_clear(0, END)
-
-    for pracownik in pracownicy:
-        if pracownik.marker:
-            pracownik.marker.change_icon(marker_icon_default_pracownicy)
-
-    for assigned in wybrani_pracownicy:
-        for idx, pracownik in enumerate(pracownicy):
-            if pracownik.name == assigned[0] and pracownik.surname == assigned[1] and pracownik.marker:
-                pracownik.marker.change_icon(marker_icon_highlighted)
-                list_box_lista_pracownikow.selection_set(idx)
-                list_box_lista_pracownikow.see(idx)
-
-def filtr_incydenty_by_jednostka(jednostki_data: list):
-    i = list_box_lista_jednostek.curselection()
-    if not i:
-        return
-    i = i[0]
-    jednostka_name = jednostki_data[i].name
-
-    cursor = db_engine.cursor()
-    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s", (jednostka_name,))
-    result = cursor.fetchone()
-
-    if not result:
-        cursor.close()
-        return
-
-    unit_id = result[0]
-
-    cursor.execute("SELECT name FROM public.incydenty WHERE unit_id = %s", (unit_id,))
-    wybrane_incydenty = cursor.fetchall()
-    cursor.close()
-
-    list_box_lista_incydentow.selection_clear(0, END)
-
-    for incydent in incydenty:
-        if incydent.marker:
-            incydent.marker.change_icon(marker_icon_default_incydenty)
-
-    for assigned in wybrane_incydenty:
-        for idx, incydent in enumerate(incydenty):
-            if incydent.name == assigned[0] and incydent.marker:
-                incydent.marker.change_icon(marker_icon_highlighted)
-                list_box_lista_incydentow.selection_set(idx)
-                list_box_lista_incydentow.see(idx)
-
-def clear_highlights():
-    list_box_lista_pracownikow.selection_clear(0, END)
-    list_box_lista_incydentow.selection_clear(0, END)
-    for pracownik in pracownicy:
-        if pracownik.marker:
-            pracownik.marker.change_icon(marker_icon_default_pracownicy)
-    for incydent in incydenty:
-        if incydent.marker:
-            incydent.marker.change_icon(marker_icon_default_incydenty)
-
-
-class Pracownicy:
-    def __init__(self, name: str, surname: str, city = str):
-        self.name = name
-        self.surname = surname
-        self.city = city
-        self.coords = self.get_coordinates()
-        if self.coords:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_pracownicy, text_color="#4169e1")
-        else:
-            self.marker = None
-
-    def get_coordinates(self):
-        import requests
-        from bs4 import BeautifulSoup
-        url: str = f'https://pl.wikipedia.org/wiki/{self.city}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/123.0 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=5)
-        # print(response.text)
-        response_html = BeautifulSoup(response.text, 'html.parser')
-        # print(response_html.prettify())
-
-        latitude_elements = response_html.select('.latitude')
-        longitude_elements = response_html.select('.longitude')
-
-        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
-            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.city}")
-            return None
-
-        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
-        # print(latitude)
-        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
-        # print(longitude)
-        return [latitude, longitude]
-
-
-def add_pracownik(pracownicy_data:list, db_engine = db_engine)->None:
-    cursor = db_engine.cursor()
-    name:str = entry_imie_pracownika.get()
-    surname:str = entry_nazwisko_pracownika.get()
-    city:str = entry_miasto_pracownika.get()
-    jednostka_name = entry_jednostka_pracownika.get()
-
-    # pobranie ID jednostki
-    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
-    result = cursor.fetchone()
-
-    unit_id = result[0]
-
-    sql = "INSERT INTO public.pracownicy(name, surname, city, unit_id) VALUES (%s, %s, %s, %s);"
-    cursor.execute(sql, (name, surname, city, unit_id))
-    db_engine.commit()
-    cursor.close()
-
-    pracownik_info(pracownicy_data)
-    entry_imie_pracownika.delete(0, END)
-    entry_nazwisko_pracownika.delete(0, END)
-    entry_miasto_pracownika.delete(0, END)
-    entry_jednostka_pracownika.delete(0, END)
-    entry_imie_pracownika.focus()
-
-
-def pracownik_info (pracownicy_data:list, db_engine = db_engine)->None:
-    for pracownik in pracownicy_data:
-        if pracownik.marker:
-            pracownik.marker.delete()
-    pracownicy_data.clear()
-
-    list_box_lista_pracownikow.delete(0, END)
-    sql = "SELECT name, surname, city FROM public.pracownicy"
-    cursor = db_engine.cursor()
-    cursor.execute(sql)
-    db_data = cursor.fetchall()
-    cursor.close()
-
-    failed_coords = []
-
-    for idx, row in enumerate(db_data):
-        pracownik = Pracownicy(name=row[0], surname=row[1], city=row[2])
-        pracownicy_data.append(pracownik)
-        list_box_lista_pracownikow.insert(idx, f"  {row[0]} {row[1]}")
-
-        if not pracownik.coords:
-            failed_coords.append(f"{row[0]} {row[1]}")
-
-    if failed_coords:
-        messagebox.showwarning("Brak lokalizacji – pracownicy","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nCi pracownicy nie będą widoczni na mapie.")
-
-def delete_pracownik(pracownicy_data: list):
-    i = list_box_lista_pracownikow.index(ACTIVE)
-    name = pracownicy_data[i].name
-    surname = pracownicy_data[i].surname
-
-    cursor = db_engine.cursor()
-    cursor.execute("DELETE FROM public.pracownicy WHERE name = %s AND surname = %s", (name, surname))
-    db_engine.commit()
-    cursor.close()
-
-    pracownik_info(pracownicy_data)
-
-def edit_pracownik(pracownicy_data: list):
-    i = list_box_lista_pracownikow.index(ACTIVE)
-    entry_imie_pracownika.insert(0, pracownicy_data[i].name)
-    entry_nazwisko_pracownika.insert(0, pracownicy_data[i].surname)
-    entry_miasto_pracownika.insert(0, pracownicy_data[i].city)
-
-    button_dodaj_pracownika.config(text="Zapisz zmiany", command=lambda: update_pracownik(pracownicy_data, i))
-
-def update_pracownik(pracownicy_data: list, i):
-    old_name = pracownicy_data[i].name
-    old_surname = pracownicy_data[i].surname
-    new_name = entry_imie_pracownika.get()
-    new_surname = entry_nazwisko_pracownika.get()
-    new_city = entry_miasto_pracownika.get()
-
-    cursor = db_engine.cursor()
-    sql = "UPDATE public.pracownicy SET name = %s, surname = %s, city = %s WHERE name = %s AND surname = %s"
-    cursor.execute(sql, (new_name, new_surname, new_city, old_name, old_surname))
-    db_engine.commit()
-    cursor.close()
-
-    pracownik_info(pracownicy_data)
-
-    button_dodaj_pracownika.config(text="Dodaj pracownika", command=lambda: add_pracownik(pracownicy))
-    entry_imie_pracownika.delete(0, END)
-    entry_nazwisko_pracownika.delete(0, END)
-    entry_miasto_pracownika.delete(0, END)
-    entry_jednostka_pracownika.delete(0, END)
-    entry_imie_pracownika.focus()
-
-
-def show_pracownik_details(pracownik_data: list):
-    i = list_box_lista_pracownikow.index(ACTIVE)
-    if i < 0:
-        return
-
-    cursor = db_engine.cursor()
-    sql = "SELECT name, surname, city FROM public.pracownicy WHERE name = %s AND surname = %s"
-    cursor.execute(sql, (pracownik_data[i].name, pracownik_data[i].surname))
-    data = cursor.fetchone()
-    cursor.close()
-    if not data:
-        return
-
-    detail_window = Toplevel(root)
-    detail_window.title(f"Szczegóły pracownika: {data[0]}")
-    detail_window.geometry("500x250")
-    detail_window.configure(bg="#eddff7")
-
-    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#eddff7").pack(pady=10)
-
-    info_frame = Frame(detail_window, bg="#eddff7", padx=20, pady=10)
-    info_frame.pack(fill=BOTH, expand=True)
-
-    Label(info_frame, text="Imię:", font=label_font, bg="#eddff7").grid(row=0, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[0], font=default_font, bg="#eddff7").grid(row=0, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Nazwisko:", font=label_font, bg="#eddff7").grid(row=1, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[1], font=default_font, bg="#eddff7").grid(row=1, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Miasto:", font=label_font, bg="#eddff7").grid(row=2, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[2], font=default_font, bg="#eddff7").grid(row=2, column=1, sticky=W, pady=5)
-
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
-
-    entry_imie_pracownika.delete(0, END)
-    entry_nazwisko_pracownika.delete(0, END)
-    entry_miasto_pracownika.delete(0, END)
-    entry_imie_pracownika.focus()
-
-
-
-class Incydenty:
-    def __init__(self, name: str, place: str):
-        self.name = name
-        self.place = place
-        self.coords = self.get_coordinates()
-        if self.coords:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon_default_incydenty, text_color="#8a2be2")
-        else:
-            self.marker = None
-
-    def get_coordinates(self):
-        import requests
-        from bs4 import BeautifulSoup
-        url: str = f'https://pl.wikipedia.org/wiki/{self.place}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                          'AppleWebKit/537.36 (KHTML, like Gecko) '
-                          'Chrome/123.0 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=5)
-        # print(response.text)
-        response_html = BeautifulSoup(response.text, 'html.parser')
-        # print(response_html.prettify())
-
-        latitude_elements = response_html.select('.latitude')
-        longitude_elements = response_html.select('.longitude')
-
-        if len(latitude_elements) < 2 or len(longitude_elements) < 2:
-            print(f"Ostrzeżenie: Nie znaleziono współrzędnych dla {self.place}")
-            return None
-
-        latitude = float(response_html.select('.latitude')[1].text.replace(',', '.'))
-        # print(latitude)
-        longitude = float(response_html.select('.longitude')[1].text.replace(',', '.'))
-        # print(longitude)
-        return [latitude, longitude]
-
-
-def add_incydent(incydenty_data:list, db_engine = db_engine)->None:
-    cursor = db_engine.cursor()
-    name: str = entry_nazwa_incydentu.get()
-    place: str = entry_miejsce_incydentu.get()
-    jednostka_name = entry_jednostka_incydentu.get()
-
-    cursor.execute("SELECT id FROM public.jednostki WHERE name = %s",(jednostka_name,))
-    result = cursor.fetchone()
-
-    unit_id = result[0]
-
-    sql = "INSERT INTO public.incydenty(name, place, unit_id) VALUES (%s, %s, %s);"
-    cursor.execute(sql, (name, place, unit_id))
-    db_engine.commit()
-    cursor.close()
-
-    incydent_info(incydenty_data)
-    entry_nazwa_incydentu.delete(0, END)
-    entry_miejsce_incydentu.delete(0, END)
-    entry_jednostka_incydentu.delete(0, END)
-    entry_nazwa_incydentu.focus()
-
-
-def show_incydent_details(incydenty_data: list):
-    i = list_box_lista_incydentow.index(ACTIVE)
-    if i < 0:
-        return
-
-    cursor = db_engine.cursor()
-    sql = "SELECT name, place FROM public.incydenty WHERE name = %s"
-    cursor.execute(sql, (incydenty_data[i].name,))
-    data = cursor.fetchone()
-    cursor.close()
-
-    if not data:
-        return
-
-    detail_window = Toplevel(root)
-    detail_window.title(f"Szczegóły incydentu: {data[0]}")
-    detail_window.geometry("500x250")
-    detail_window.configure(bg="#f0c2e3")
-
-    Label(detail_window, text=f"Szczegóły incydentu", font=label_font, bg="#f0c2e3").pack(pady=10)
-
-    info_frame = Frame(detail_window, bg="#f0c2e3", padx=20, pady=10)
-    info_frame.pack(fill=BOTH, expand=True)
-
-    Label(info_frame, text="Nazwa:", font=label_font, bg="#f0c2e3").grid(row=0, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[0], font=default_font, bg="#f0c2e3").grid(row=0, column=1, sticky=W, pady=5)
-
-    Label(info_frame, text="Miejsce:", font=label_font, bg="#f0c2e3").grid(row=1, column=0, sticky=W, pady=5)
-    Label(info_frame, text=data[1], font=default_font, bg="#f0c2e3").grid(row=1, column=1, sticky=W, pady=5)
-
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font).pack(pady=10)
-
-    entry_nazwa_incydentu.delete(0, END)
-    entry_miejsce_incydentu.delete(0, END)
-    entry_nazwa_incydentu.focus()
-
-def incydent_info (incydenty_data:list, db_engine = db_engine)->None:
-    for incydent in incydenty_data:
-        if incydent.marker:
-            incydent.marker.delete()
-    incydenty_data.clear()
-
-    list_box_lista_incydentow.delete(0, END)
-    sql = "SELECT name, place FROM public.incydenty"
-    cursor = db_engine.cursor()
-    cursor.execute(sql)
-    db_data = cursor.fetchall()
-    cursor.close()
-
-    failed_coords = []
-
-    for idx, row in enumerate(db_data):
-        incydent = Incydenty(name=row[0], place=row[1])
-        incydenty_data.append(incydent)
-        list_box_lista_incydentow.insert(idx, f"  {row[0]}")
-
-        if not incydent.coords:
-            failed_coords.append(row[0])
-
-    if failed_coords:
-        messagebox.showwarning(
-            "Brak lokalizacji – incydenty","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe incydenty nie będą widoczne na mapie.")
-
-def delete_incydent(incydenty_data: list):
-    i = list_box_lista_incydentow.index(ACTIVE)
-    name = incydenty_data[i].name
-
-    cursor = db_engine.cursor()
-    cursor.execute("DELETE FROM public.incydenty WHERE name = %s", (name,))
-    db_engine.commit()
-    cursor.close()
-
-    incydent_info(incydenty_data)
-
-def edit_incydent(incydenty_data: list):
-    i = list_box_lista_incydentow.index(ACTIVE)
-    entry_nazwa_incydentu.insert(0, incydenty_data[i].name)
-    entry_miejsce_incydentu.insert(0, incydenty_data[i].place)
-
-    button_dodaj_incydent.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i))
-
-def update_incydent(incydenty_data: list, i):
-    old_name = incydenty_data[i].name
-    incydenty_data[i].name = entry_nazwa_incydentu.get()
-    incydenty_data[i].place = entry_miejsce_incydentu.get()
-
-    cursor = db_engine.cursor()
-    sql = "UPDATE public.incydenty SET name = %s, place = %s WHERE name = %s"
-    cursor.execute(sql, (incydenty_data[i].name, incydenty_data[i].place, old_name))
-    db_engine.commit()
-    cursor.close()
-
-    incydenty_data[i].coords = incydenty_data[i].get_coordinates()
-    incydenty_data[i].marker.set_position(incydenty_data[i].coords[0], incydenty_data[i].coords[1])
-    incydenty_data[i].marker.set_text(incydenty_data[i].name)
-
-    incydent_info(incydenty_data)
-
-    button_dodaj_incydent.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty), bg = "#f7e9f3", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
-    entry_nazwa_incydentu.delete(0, END)
-    entry_miejsce_incydentu.delete(0, END)
-    entry_jednostka_incydentu.delete(0, END)
-    entry_nazwa_incydentu.focus()
-
-
-
 
 root = Tk()
 root.title("Projekt systemu do zarządzania jednostkami policji i policjantami przypisanymi do danej jednostki")
@@ -631,7 +23,6 @@ map_icon = PhotoImage(file="map.png")
 jednostka_icon = PhotoImage(file="jednostka.png")
 pracownik_icon = PhotoImage(file="pracownik.png")
 incydent_icon = PhotoImage(file="incydent.png")
-
 
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=1)
@@ -664,19 +55,33 @@ ramka_naglowek_mapy.grid(row=1, column=0, columnspan=6, sticky="ew", pady=10)
 ramka_mapa.grid(row=2, column=0, columnspan=6, sticky="nsew")
 
 # RAMKA LISTA JEDNOSTEK
-label_lista_jednostek = Label(ramka_jednostki, text="Lista jednostek policji", image=jednostka_icon, compound = LEFT, font=label_font, bg="#eddff7")
+label_lista_jednostek = Label(ramka_jednostki, text="Lista jednostek policji", image=jednostka_icon, compound=LEFT,
+                              font=label_font, bg="#eddff7")
 label_lista_jednostek.grid(row=0, column=0, columnspan=3, sticky="ew")
 
 list_box_lista_jednostek = Listbox(ramka_jednostki, font=default_font)
 list_box_lista_jednostek.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-button_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font, command=lambda: show_jednostka_details(jednostki), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły", font=default_font,
+                                    command=lambda: show_jednostka_details(jednostki, list_box_lista_jednostek, root,
+                                    label_font, default_font, entry_nazwa_jednostki, entry_miasto_jednostki,
+                                    entry_ulica_jednostki), bg="#d8a7e6", fg="white", relief="flat", bd=0,
+                                    highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                    padx=10, pady=6, cursor="hand2")
 button_szczegoly_jednostki.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
 
-button_usun_jednostke = Button(ramka_jednostki, text="Usuń", font=default_font, command=lambda: delete_jednostka(jednostki), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_usun_jednostke = Button(ramka_jednostki, text="Usuń", font=default_font,
+                               command=lambda: delete_jednostka(jednostki, list_box_lista_jednostek, map_widget, marker_icon_default_jednostki), bg="#d8a7e6",
+                               fg="white", relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                               highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_usun_jednostke.grid(row=2, column=1, sticky="ew", padx=4, pady=4)
 
-button_aktualizuj_jednostke = Button(ramka_jednostki, text="Aktualizuj", font=default_font, command=lambda: edit_jednostki(jednostki), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_aktualizuj_jednostke = Button(ramka_jednostki, text="Aktualizuj", font=default_font,
+                                    command=lambda: edit_jednostki(jednostki, list_box_lista_jednostek,
+                                    entry_nazwa_jednostki, entry_miasto_jednostki, entry_ulica_jednostki,
+                                    button_dodaj_jednostke, map_widget, marker_icon_default_jednostki), bg="#d8a7e6", fg="white", relief="flat", bd=0,
+                                    highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                     padx=10, pady=6, cursor="hand2")
 button_aktualizuj_jednostke.grid(row=2, column=2, sticky="ew", padx=4, pady=4)
 
 ramka_jednostki.columnconfigure(0, weight=1)
@@ -684,11 +89,12 @@ ramka_jednostki.columnconfigure(1, weight=1)
 ramka_jednostki.columnconfigure(2, weight=1)
 ramka_jednostki.rowconfigure(1, weight=1)
 
-#RAMKA FORMULARZ JEDNOSTEK
-label_formularz_jednostek = Label(ramka_formularz_jednostki, text="Formularz - jednostki: ", font=label_font, bg="#eddff7")
+# RAMKA FORMULARZ JEDNOSTEK
+label_formularz_jednostek = Label(ramka_formularz_jednostki, text="Formularz - jednostki: ", font=label_font,
+                                  bg="#eddff7")
 label_formularz_jednostek.grid(row=0, column=0, columnspan=2, sticky="ew")
 
-label_nazwa_jednostki = Label(ramka_formularz_jednostki, text= "Nazwa: ", font=default_font, bg="#eddff7")
+label_nazwa_jednostki = Label(ramka_formularz_jednostki, text="Nazwa: ", font=default_font, bg="#eddff7")
 label_nazwa_jednostki.grid(row=1, column=0, sticky=W)
 
 label_ulica_jednostki = Label(ramka_formularz_jednostki, text="Ulica: ", font=default_font, bg="#eddff7")
@@ -706,35 +112,67 @@ entry_ulica_jednostki.grid(row=2, column=1, sticky="ew")
 entry_miasto_jednostki = Entry(ramka_formularz_jednostki, font=default_font)
 entry_miasto_jednostki.grid(row=3, column=1, sticky="ew")
 
-button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font, command=lambda: add_jednostki(jednostki), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_dodaj_jednostke = Button(ramka_formularz_jednostki, text="Dodaj jednostkę", font=default_font,
+                                command=lambda: add_jednostki(jednostki, list_box_lista_jednostek, map_widget, marker_icon_default_jednostki, entry_nazwa_jednostki,entry_miasto_jednostki,
+                                entry_ulica_jednostki), bg="#d8a7e6", fg="white", relief="flat", bd=0,
+                                highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                padx=10, pady=6, cursor="hand2")
 button_dodaj_jednostke.grid(row=4, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 
-button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font, command=lambda: filtr_pracownicy_by_jednostka(jednostki), bg = "#e0a1bf", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_wyswietl_pracownikow = Button(ramka_formularz_jednostki, text="Wyświetl pracowników", font=default_font,
+                                    command=lambda: filtr_pracownicy_by_jednostka(jednostki, list_box_lista_jednostek,
+                                    pracownicy, list_box_lista_pracownikow, marker_icon_highlighted,
+                                    marker_icon_default_pracownicy), bg="#e0a1bf", fg="white", relief="flat", bd=0,
+                                    highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                    padx=10, pady=6, cursor="hand2")
 button_wyswietl_pracownikow.grid(row=6, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 
-button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font, command=lambda: filtr_incydenty_by_jednostka(jednostki), bg = "#e0a1bf", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_wyswietl_incydenty = Button(ramka_formularz_jednostki, text="Wyświetl incydenty", font=default_font,
+                                   command=lambda: filtr_incydenty_by_jednostka(jednostki, list_box_lista_jednostek,
+                                    incydenty, list_box_lista_incydentow, marker_icon_highlighted,
+                                    marker_icon_default_incydenty), bg="#e0a1bf", fg="white", relief="flat", bd=0,
+                                   highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                   padx=10, pady=6, cursor="hand2")
 button_wyswietl_incydenty.grid(row=7, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 
-button_wyczysc_zaznaczenia = Button(ramka_formularz_jednostki, text="Wyczyść zaznaczenia", font=default_font, command=clear_highlights, bg = "#e8b6cf", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=4, cursor="hand2")
+button_wyczysc_zaznaczenia = Button(ramka_formularz_jednostki, text="Wyczyść zaznaczenia", font=default_font,
+                                    command=lambda: clear_highlights(pracownicy, incydenty, list_box_lista_pracownikow,
+                                    list_box_lista_incydentow, marker_icon_default_pracownicy,
+                                    marker_icon_default_incydenty), bg="#e8b6cf", fg="white", relief="flat", bd=0,
+                                    highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                                    padx=10, pady=4, cursor="hand2")
 button_wyczysc_zaznaczenia.grid(row=8, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 
 ramka_formularz_jednostki.columnconfigure(1, weight=1)
 
-
-#RAMKA LISTA PRACOWNIKÓW
-label_lista_pracownikow = Label(ramka_pracownicy, text="Lista pracowników policji", image=pracownik_icon, compound = LEFT, font=label_font, bg="#eddff7")
+# RAMKA LISTA PRACOWNIKÓW
+label_lista_pracownikow = Label(ramka_pracownicy, text="Lista pracowników policji", image=pracownik_icon,
+                                compound=LEFT, font=label_font, bg="#eddff7")
 label_lista_pracownikow.grid(row=0, column=0, columnspan=3, sticky="ew")
 
 list_box_lista_pracownikow = Listbox(ramka_pracownicy, font=default_font)
 list_box_lista_pracownikow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-button_szczegoly_pracownika= Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font, command=lambda: show_pracownik_details(pracownicy), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_szczegoly_pracownika = Button(ramka_pracownicy, text="Wyświetl szczegóły", font=default_font,
+                                    command=lambda: show_pracownik_details(pracownicy, list_box_lista_pracownikow,
+                                    root, label_font, default_font, entry_imie_pracownika, entry_nazwisko_pracownika, entry_miasto_pracownika,
+    ), bg="#d8a7e6", fg="white",
+                                    relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                                    highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_szczegoly_pracownika.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
 
-button_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font, command=lambda: delete_pracownik(pracownicy), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_usun_pracownika = Button(ramka_pracownicy, text="Usuń", font=default_font,
+                                command=lambda: delete_pracownik(pracownicy, list_box_lista_pracownikow, map_widget, marker_icon_default_pracownicy), bg="#d8a7e6",
+                                fg="white", relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                                highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_usun_pracownika.grid(row=2, column=1, sticky="ew", padx=4, pady=4)
 
-button_aktualizuj_pracownika = Button(ramka_pracownicy, text="Aktualizuj", font=default_font, command=lambda: edit_pracownik(pracownicy), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_aktualizuj_pracownika = Button(ramka_pracownicy, text="Aktualizuj", font=default_font,
+                                    command=lambda: edit_pracownik(pracownicy, list_box_lista_pracownikow, map_widget, marker_icon_default_pracownicy,
+                                    entry_imie_pracownika, entry_nazwisko_pracownika, entry_miasto_pracownika,
+                                    entry_jednostka_pracownika, button_dodaj_pracownika), bg="#d8a7e6", fg="white",
+                                    relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                                    highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_aktualizuj_pracownika.grid(row=2, column=2, sticky="ew", padx=4, pady=4)
 
 ramka_pracownicy.columnconfigure(0, weight=1)
@@ -742,11 +180,12 @@ ramka_pracownicy.columnconfigure(1, weight=1)
 ramka_pracownicy.columnconfigure(2, weight=1)
 ramka_pracownicy.rowconfigure(1, weight=1)
 
-#RAMKA FORMULARZ PRACOWNIKÓW
-label_formularz_pracownicy = Label(ramka_formularz_pracownicy, text="Formularz - pracownicy: ", font=label_font, bg="#eddff7")
+# RAMKA FORMULARZ PRACOWNIKÓW
+label_formularz_pracownicy = Label(ramka_formularz_pracownicy, text="Formularz - pracownicy: ", font=label_font,
+                                   bg="#eddff7")
 label_formularz_pracownicy.grid(row=0, column=0, columnspan=2, sticky="ew")
 
-label_imie_pracownika = Label(ramka_formularz_pracownicy, text= "Imię: ", font=default_font, bg="#eddff7")
+label_imie_pracownika = Label(ramka_formularz_pracownicy, text="Imię: ", font=default_font, bg="#eddff7")
 label_imie_pracownika.grid(row=1, column=0, sticky=W)
 
 label_nazwisko_pracownika = Label(ramka_formularz_pracownicy, text="Nazwisko: ", font=default_font, bg="#eddff7")
@@ -755,7 +194,8 @@ label_nazwisko_pracownika.grid(row=2, column=0, sticky=W)
 label_miasto_pracownika = Label(ramka_formularz_pracownicy, text="Miasto: ", font=default_font, bg="#eddff7")
 label_miasto_pracownika.grid(row=3, column=0, sticky=W)
 
-label_jednostka_pracownika = Label(ramka_formularz_pracownicy, text="Jednostka policji: ", font=default_font, bg="#eddff7")
+label_jednostka_pracownika = Label(ramka_formularz_pracownicy, text="Jednostka policji: ", font=default_font,
+                                   bg="#eddff7")
 label_jednostka_pracownika.grid(row=4, column=0, sticky=W)
 
 entry_imie_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
@@ -770,26 +210,43 @@ entry_miasto_pracownika.grid(row=3, column=1, sticky="ew")
 entry_jednostka_pracownika = Entry(ramka_formularz_pracownicy, font=default_font)
 entry_jednostka_pracownika.grid(row=4, column=1, sticky="ew")
 
-button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj pracownika", font=default_font, command=lambda: add_pracownik(pracownicy), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_dodaj_pracownika = Button(ramka_formularz_pracownicy, text="Dodaj pracownika", font=default_font,
+                                command=lambda: add_pracownik(pracownicy, list_box_lista_pracownikow, map_widget, marker_icon_default_pracownicy, entry_imie_pracownika,
+                                entry_nazwisko_pracownika, entry_miasto_pracownika, entry_jednostka_pracownika),
+                                bg="#d8a7e6", fg="white", relief="flat", bd=0, highlightbackground="#ffffff",
+                                highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_dodaj_pracownika.grid(row=5, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 
 ramka_formularz_pracownicy.columnconfigure(1, weight=1)
 
-
-#RAMKA LISTA INCYDENTÓW
-label_lista_incydentow = Label(ramka_incydenty, text="Lista incydentów", image=incydent_icon, compound = LEFT, font=label_font, bg="#eddff7")
+# RAMKA LISTA INCYDENTÓW
+label_lista_incydentow = Label(ramka_incydenty, text="Lista incydentów", image=incydent_icon, compound=LEFT,
+                               font=label_font, bg="#eddff7")
 label_lista_incydentow.grid(row=0, column=0, columnspan=3, sticky="ew")
 
 list_box_lista_incydentow = Listbox(ramka_incydenty, font=default_font)
 list_box_lista_incydentow.grid(row=1, column=0, columnspan=3, sticky="nsew")
 
-button_szczegoly_incydentu= Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font, command=lambda: show_incydent_details(incydenty), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_szczegoly_incydentu = Button(ramka_incydenty, text="Wyświetl szczegóły", font=default_font,
+                                    command=lambda: show_incydent_details(incydenty, list_box_lista_incydentow, root, label_font, default_font,
+                                    entry_nazwa_incydentu, entry_miejsce_incydentu,
+                                    ), bg="#d8a7e6", fg="white",
+                                    relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                                    highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_szczegoly_incydentu.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
 
-button_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font, command=lambda: delete_incydent(incydenty), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_usun_incydent = Button(ramka_incydenty, text="Usuń", font=default_font,
+                              command=lambda: delete_incydent(incydenty, list_box_lista_incydentow, map_widget, marker_icon_default_incydenty), bg="#d8a7e6",
+                              fg="white", relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff",
+                              highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_usun_incydent.grid(row=2, column=1, sticky="ew", padx=4, pady=4)
 
-button_aktualizuj_incydent = Button(ramka_incydenty, text="Aktualizuj", font=default_font, command=lambda: edit_incydent(incydenty), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_aktualizuj_incydent = Button(ramka_incydenty, text="Aktualizuj", font=default_font,
+                                    command=lambda: edit_incydent(incydenty, list_box_lista_incydentow, map_widget, marker_icon_default_incydenty,
+                                    entry_nazwa_incydentu, entry_miejsce_incydentu,entry_jednostka_incydentu,
+                                    button_dodaj_incydent), bg="#d8a7e6", fg="white", relief="flat", bd=0,
+                                    highlightbackground="#ffffff", highlightcolor="#ffffff",
+                                    highlightthickness=2, padx=10, pady=6, cursor="hand2")
 button_aktualizuj_incydent.grid(row=2, column=2, sticky="ew", padx=4, pady=4)
 
 ramka_incydenty.columnconfigure(0, weight=1)
@@ -797,17 +254,19 @@ ramka_incydenty.columnconfigure(1, weight=1)
 ramka_incydenty.columnconfigure(2, weight=1)
 ramka_incydenty.rowconfigure(1, weight=1)
 
-#RAMKA FORMULARZ INCYDENTÓW
-label_formularz_incydentow = Label(ramka_formularz_incydenty, text="Formularz - incydenty: ", font=label_font, bg="#eddff7")
+# RAMKA FORMULARZ INCYDENTÓW
+label_formularz_incydentow = Label(ramka_formularz_incydenty, text="Formularz - incydenty: ", font=label_font,
+                                   bg="#eddff7")
 label_formularz_incydentow.grid(row=0, column=0, columnspan=2, sticky="ew")
 
-label_nazwa_incydentu = Label(ramka_formularz_incydenty, text= "Nazwa: ", font=default_font, bg="#eddff7")
+label_nazwa_incydentu = Label(ramka_formularz_incydenty, text="Nazwa: ", font=default_font, bg="#eddff7")
 label_nazwa_incydentu.grid(row=1, column=0, sticky=W)
 
 label_miejsce_incydentu = Label(ramka_formularz_incydenty, text="Miejsce: ", font=default_font, bg="#eddff7")
 label_miejsce_incydentu.grid(row=2, column=0, sticky=W)
 
-label_jednostka_incydentu = Label(ramka_formularz_incydenty, text="Jednostka policji: ", font=default_font, bg="#eddff7")
+label_jednostka_incydentu = Label(ramka_formularz_incydenty, text="Jednostka policji: ", font=default_font,
+                                  bg="#eddff7")
 label_jednostka_incydentu.grid(row=3, column=0, sticky=W)
 
 entry_nazwa_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
@@ -819,12 +278,17 @@ entry_miejsce_incydentu.grid(row=2, column=1, sticky="ew")
 entry_jednostka_incydentu = Entry(ramka_formularz_incydenty, font=default_font)
 entry_jednostka_incydentu.grid(row=3, column=1, sticky="ew")
 
-button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font, command=lambda: add_incydent(incydenty), bg = "#d8a7e6", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+button_dodaj_incydent = Button(ramka_formularz_incydenty, text="Dodaj incydent", font=default_font,
+                               command=lambda: add_incydent(incydenty, list_box_lista_incydentow, map_widget, marker_icon_default_incydenty, entry_nazwa_incydentu, entry_miejsce_incydentu,
+                                entry_jednostka_incydentu,), bg="#d8a7e6", fg="white", relief="flat",
+                               bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2,
+                               padx=10, pady=6, cursor="hand2")
 button_dodaj_incydent.grid(row=4, column=0, columnspan=2, sticky="ew", padx=4, pady=4)
 ramka_formularz_incydenty.columnconfigure(1, weight=1)
 
 # RAMKA NAGŁÓWEK MAPY
-label_naglowek_mapy = Label(ramka_naglowek_mapy, text="Mapa", image=map_icon, compound = LEFT, font=label_font, bg="#f7e9f3", fg="#4b0082", padx=10, pady=5)
+label_naglowek_mapy = Label(ramka_naglowek_mapy, text="Mapa", image=map_icon, compound=LEFT, font=label_font,
+                            bg="#f7e9f3", fg="#4b0082", padx=10, pady=5)
 label_naglowek_mapy.grid(row=0, column=0, columnspan=6, sticky="ew")
 ramka_naglowek_mapy.config(bg="#ffffff", highlightbackground="#f7e9f3", highlightthickness=2, padx=5, pady=5)
 
@@ -840,8 +304,13 @@ map_widget.grid(row=0, column=0, sticky="nsew")
 ramka_mapa.columnconfigure(0, weight=1)
 ramka_mapa.rowconfigure(0, weight=1)
 
-jednostki_info(jednostki)
-pracownik_info(pracownicy)
-incydent_info(incydenty)
+jednostki_info(jednostki,list_box_lista_jednostek,map_widget,marker_icon_default_jednostki)
+pracownik_info(pracownicy,list_box_lista_pracownikow, map_widget, marker_icon_default_pracownicy)
+incydent_info(incydenty,list_box_lista_incydentow, map_widget, marker_icon_default_incydenty)
 
 root.mainloop()
+
+
+
+
+
