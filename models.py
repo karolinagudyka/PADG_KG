@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 
 
 class Jednostki:
-    def __init__(self, name: str, city: str, street=str, map_widget=None, marker_icon=None):
+    def __init__(self, name: str, city: str, street: str, map_widget=None, marker_icon=None):
         self.name = name
         self.city = city
         self.street = street
@@ -39,7 +39,7 @@ class Jednostki:
         return [latitude, longitude]
 
 class Pracownicy:
-    def __init__(self, name: str, surname: str, city = str, map_widget=None, marker_icon=None):
+    def __init__(self, name: str, surname: str, city: str, map_widget=None, marker_icon=None):
         self.name = name
         self.surname = surname
         self.city = city
@@ -50,8 +50,6 @@ class Pracownicy:
             self.marker = None
 
     def get_coordinates(self):
-        import requests
-        from bs4 import BeautifulSoup
         url: str = f'https://pl.wikipedia.org/wiki/{self.city}'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -88,8 +86,6 @@ class Incydenty:
             self.marker = None
 
     def get_coordinates(self):
-        import requests
-        from bs4 import BeautifulSoup
         url: str = f'https://pl.wikipedia.org/wiki/{self.place}'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '

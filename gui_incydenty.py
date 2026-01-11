@@ -1,13 +1,12 @@
 from tkinter import *
 from tkinter import messagebox
-import webbrowser
 from database import db_engine
 from models import Incydenty
 
 
 
 
-def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, db_engine = db_engine)->None:
+def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, db_engine = db_engine) -> None:
     cursor = db_engine.cursor()
     name: str = entry_nazwa.get()
     place: str = entry_miejsce.get()
@@ -30,7 +29,7 @@ def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_n
     entry_nazwa.focus()
 
 
-def show_incydent_details(incydenty_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miejsce,  db_engine = db_engine)->None:
+def show_incydent_details(incydenty_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miejsce,  db_engine = db_engine) -> None:
     i = list_box.index(ACTIVE)
     if i < 0:
         return
@@ -66,7 +65,7 @@ def show_incydent_details(incydenty_data: list, list_box, root, label_font, defa
     entry_miejsce.delete(0, END)
     entry_nazwa.focus()
 
-def incydent_info (incydenty_data:list, list_box, map_widget, marker_icon, db_engine = db_engine)->None:
+def incydent_info (incydenty_data:list, list_box, map_widget, marker_icon, db_engine = db_engine) -> None:
     for incydent in incydenty_data:
         if incydent.marker:
             incydent.marker.delete()
@@ -93,7 +92,7 @@ def incydent_info (incydenty_data:list, list_box, map_widget, marker_icon, db_en
         messagebox.showwarning(
             "Brak lokalizacji – incydenty","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe incydenty nie będą widoczne na mapie.")
 
-def delete_incydent(incydenty_data: list, list_box, map_widget, marker_icon):
+def delete_incydent(incydenty_data: list, list_box, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
     name = incydenty_data[i].name
 
@@ -104,14 +103,14 @@ def delete_incydent(incydenty_data: list, list_box, map_widget, marker_icon):
 
     incydent_info(incydenty_data, list_box, map_widget, marker_icon)
 
-def edit_incydent(incydenty_data: list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, button_dodaj):
+def edit_incydent(incydenty_data: list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, button_dodaj) -> None:
     i = list_box.index(ACTIVE)
     entry_nazwa.insert(0, incydenty_data[i].name)
     entry_miejsce.insert(0, incydenty_data[i].place)
 
     button_dodaj.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka))
 
-def update_incydent(incydenty_data: list, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka_incydentu):
+def update_incydent(incydenty_data: list, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka_incydentu) -> None:
     old_name = incydenty_data[i].name
     incydenty_data[i].name = entry_nazwa.get()
     incydenty_data[i].place = entry_miejsce.get()

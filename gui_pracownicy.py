@@ -1,10 +1,9 @@
 from tkinter import *
 from tkinter import messagebox
-import webbrowser
 from database import db_engine
 from models import Pracownicy
 
-def add_pracownik(pracownicy_data:list, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, db_engine = db_engine)->None:
+def add_pracownik(pracownicy_data:list, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, db_engine = db_engine) -> None:
     cursor = db_engine.cursor()
     name:str = entry_imie.get()
     surname:str = entry_nazwisko.get()
@@ -30,7 +29,7 @@ def add_pracownik(pracownicy_data:list, list_box, map_widget, marker_icon, entry
     entry_imie.focus()
 
 
-def pracownik_info (pracownicy_data:list, list_box, map_widget, marker_icon, db_engine = db_engine)->None:
+def pracownik_info (pracownicy_data:list, list_box, map_widget, marker_icon, db_engine = db_engine) -> None:
     for pracownik in pracownicy_data:
         if pracownik.marker:
             pracownik.marker.delete()
@@ -57,7 +56,7 @@ def pracownik_info (pracownicy_data:list, list_box, map_widget, marker_icon, db_
         messagebox.showwarning("Brak lokalizacji – pracownicy","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nCi pracownicy nie będą widoczni na mapie.")
 
 
-def delete_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon):
+def delete_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
     name = pracownicy_data[i].name
     surname = pracownicy_data[i].surname
@@ -69,7 +68,7 @@ def delete_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon):
 
     pracownik_info(pracownicy_data, list_box, map_widget, marker_icon)
 
-def edit_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, button_dodaj):
+def edit_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, button_dodaj) -> None:
     i = list_box.index(ACTIVE)
     entry_imie.insert(0, pracownicy_data[i].name)
     entry_nazwisko.insert(0, pracownicy_data[i].surname)
@@ -79,7 +78,7 @@ def edit_pracownik(pracownicy_data: list, list_box, map_widget, marker_icon, ent
         entry_imie, entry_nazwisko, entry_miasto,
         entry_jednostka, button_dodaj))
 
-def update_pracownik(pracownicy_data: list, i, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, button_dodaj):
+def update_pracownik(pracownicy_data: list, i, list_box, map_widget, marker_icon, entry_imie, entry_nazwisko, entry_miasto, entry_jednostka, button_dodaj) -> None:
     old_name = pracownicy_data[i].name
     old_surname = pracownicy_data[i].surname
     new_name = entry_imie.get()
@@ -103,7 +102,7 @@ def update_pracownik(pracownicy_data: list, i, list_box, map_widget, marker_icon
     entry_imie.focus()
 
 
-def show_pracownik_details(pracownik_data: list, list_box, root, label_font, default_font, entry_imie, entry_nazwisko, entry_miasto):
+def show_pracownik_details(pracownik_data: list, list_box, root, label_font, default_font, entry_imie, entry_nazwisko, entry_miasto) -> None:
     i = list_box.index(ACTIVE)
     if i < 0:
         return

@@ -6,7 +6,7 @@ from models import Jednostki
 
 
 
-def add_jednostki(jednostki_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miasto, entry_ulica, db_engine = db_engine)->None:
+def add_jednostki(jednostki_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miasto, entry_ulica, db_engine = db_engine) -> None:
     cursor = db_engine.cursor()
     name:str = entry_nazwa.get()
     city:str = entry_miasto.get()
@@ -23,7 +23,7 @@ def add_jednostki(jednostki_data:list, list_box, map_widget, marker_icon, entry_
     entry_ulica.delete(0, END)
     entry_nazwa.focus()
 
-def jednostki_info (jednostki_data:list, list_box, map_widget, marker_icon, db_engine=db_engine):
+def jednostki_info (jednostki_data:list, list_box, map_widget, marker_icon, db_engine=db_engine) -> None:
     for jednostka in jednostki_data:
         if jednostka.marker:
             jednostka.marker.delete()
@@ -48,7 +48,7 @@ def jednostki_info (jednostki_data:list, list_box, map_widget, marker_icon, db_e
     if failed_coords:
         messagebox.showwarning("Brak lokalizacji – jednostki", "Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe jednostki nie będą widoczne na mapie.")
 
-def delete_jednostka(jednostki_data: list, list_box, map_widget, marker_icon):
+def delete_jednostka(jednostki_data: list, list_box, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
     name = jednostki_data[i].name
 
@@ -59,7 +59,7 @@ def delete_jednostka(jednostki_data: list, list_box, map_widget, marker_icon):
 
     jednostki_info(jednostki_data, list_box, map_widget, marker_icon)
 
-def edit_jednostki(jednostki_data: list, list_box, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, map_widget, marker_icon):
+def edit_jednostki(jednostki_data: list, list_box, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
     entry_nazwa.insert(0, jednostki_data[i].name)
     entry_miasto.insert(0, jednostki_data[i].city)
@@ -67,7 +67,7 @@ def edit_jednostki(jednostki_data: list, list_box, entry_nazwa, entry_miasto, en
 
     button_dodaj.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon))
 
-def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon):
+def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon) -> None:
     old_name = jednostki_data[i].name
     jednostki_data[i].name = entry_nazwa.get()
     jednostki_data[i].city = entry_miasto.get()
@@ -92,7 +92,7 @@ def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_u
     entry_nazwa.focus()
 
 
-def show_jednostka_details(jednostki_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miasto, entry_ulica):
+def show_jednostka_details(jednostki_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miasto, entry_ulica) -> None:
     i = list_box.curselection()
     if not i:
         return
@@ -143,7 +143,7 @@ def show_jednostka_details(jednostki_data: list, list_box, root, label_font, def
     entry_miasto.delete(0, END)
     entry_nazwa.focus()
 
-def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, pracownicy, list_box_pracownicy, marker_icon_highlighted, marker_icon_default_pracownicy):
+def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, pracownicy, list_box_pracownicy, marker_icon_highlighted, marker_icon_default_pracownicy) -> None:
     i = list_box_jednostek.curselection()
     if not i:
         return
@@ -177,7 +177,7 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, prac
                 list_box_pracownicy.selection_set(idx)
                 list_box_pracownicy.see(idx)
 
-def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incydenty, list_box_incydenty, marker_icon_highlighted, marker_icon_default_incydenty):
+def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incydenty, list_box_incydenty, marker_icon_highlighted, marker_icon_default_incydenty) -> None:
     i = list_box_jednostek.curselection()
     if not i:
         return
@@ -211,7 +211,7 @@ def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incyd
                 list_box_incydenty.selection_set(idx)
                 list_box_incydenty.see(idx)
 
-def clear_highlights(pracownicy, incydenty, list_box_pracownicy, list_box_incydenty, marker_icon_default_pracownicy, marker_icon_default_incydenty):
+def clear_highlights(pracownicy, incydenty, list_box_pracownicy, list_box_incydenty, marker_icon_default_pracownicy, marker_icon_default_incydenty) -> None:
     list_box_pracownicy.selection_clear(0, END)
     list_box_incydenty.selection_clear(0, END)
     for pracownik in pracownicy:
