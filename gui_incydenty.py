@@ -3,10 +3,8 @@ from tkinter import messagebox
 from database import db_engine
 from models import Incydenty
 
-
-
-
-def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, db_engine = db_engine) -> None:
+def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka,
+                 db_engine = db_engine) -> None:
     cursor = db_engine.cursor()
     name: str = entry_nazwa.get()
     place: str = entry_miejsce.get()
@@ -28,8 +26,8 @@ def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_n
     entry_jednostka.delete(0, END)
     entry_nazwa.focus()
 
-
-def show_incydent_details(incydenty_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miejsce,  db_engine = db_engine) -> None:
+def show_incydent_details(incydenty_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miejsce,
+                          db_engine = db_engine) -> None:
     i = list_box.index(ACTIVE)
     if i < 0:
         return
@@ -90,7 +88,8 @@ def incydent_info (incydenty_data:list, list_box, map_widget, marker_icon, db_en
 
     if failed_coords:
         messagebox.showwarning(
-            "Brak lokalizacji – incydenty","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe incydenty nie będą widoczne na mapie.")
+            "Brak lokalizacji – incydenty","Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords)
+                                           + "\n\nTe incydenty nie będą widoczne na mapie.")
 
 def delete_incydent(incydenty_data: list, list_box, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
@@ -100,17 +99,19 @@ def delete_incydent(incydenty_data: list, list_box, map_widget, marker_icon) -> 
     cursor.execute("DELETE FROM public.incydenty WHERE name = %s", (name,))
     db_engine.commit()
     cursor.close()
-
     incydent_info(incydenty_data, list_box, map_widget, marker_icon)
 
-def edit_incydent(incydenty_data: list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka, button_dodaj) -> None:
+def edit_incydent(incydenty_data: list, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka,
+                  button_dodaj) -> None:
     i = list_box.index(ACTIVE)
     entry_nazwa.insert(0, incydenty_data[i].name)
     entry_miejsce.insert(0, incydenty_data[i].place)
 
-    button_dodaj.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka))
+    button_dodaj.config(text="Zapisz zmiany", command=lambda: update_incydent(incydenty_data, i, list_box, map_widget,
+                                            marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka))
 
-def update_incydent(incydenty_data: list, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj, entry_jednostka_incydentu) -> None:
+def update_incydent(incydenty_data: list, i, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, button_dodaj,
+                    entry_jednostka_incydentu) -> None:
     old_name = incydenty_data[i].name
     incydenty_data[i].name = entry_nazwa.get()
     incydenty_data[i].place = entry_miejsce.get()
@@ -127,7 +128,9 @@ def update_incydent(incydenty_data: list, i, list_box, map_widget, marker_icon, 
 
     incydent_info(incydenty_data, list_box, map_widget, marker_icon)
 
-    button_dodaj.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty_data, list_box, map_widget, marker_icon, entry_nazwa, entry_miejsce, entry_jednostka_incydentu), bg = "#f7e9f3", fg="white",relief="flat", bd=0, highlightbackground="#ffffff", highlightcolor="#ffffff", highlightthickness=2, padx=10, pady=6, cursor="hand2")
+    button_dodaj.config(text="Dodaj incydent", command=lambda: add_incydent(incydenty_data, list_box, map_widget,
+                        marker_icon, entry_nazwa, entry_miejsce, entry_jednostka_incydentu), bg = "#f7e9f3", fg="white"
+                        ,relief="flat", bd=0, padx=10, pady=6, cursor="hand2")
     entry_nazwa.delete(0, END)
     entry_miejsce.delete(0, END)
     entry_jednostka_incydentu.delete(0, END)

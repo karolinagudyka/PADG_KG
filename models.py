@@ -1,7 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
 
-
 class Jednostki:
     def __init__(self, name: str, city: str, street: str, map_widget=None, marker_icon=None):
         self.name = name
@@ -9,7 +8,8 @@ class Jednostki:
         self.street = street
         self.coords = self.get_coordinates()
         if self.coords and map_widget and marker_icon:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon, text_color="#ff8c00")
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon,
+                                                text_color="#ff8c00")
         else:
             self.marker = None
 
@@ -45,7 +45,8 @@ class Pracownicy:
         self.city = city
         self.coords = self.get_coordinates()
         if self.coords and map_widget and marker_icon:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon, text_color="#4169e1")
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon,
+                                                text_color="#4169e1")
         else:
             self.marker = None
 
@@ -81,7 +82,8 @@ class Incydenty:
         self.place = place
         self.coords = self.get_coordinates()
         if self.coords and map_widget and marker_icon:
-            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon, text_color="#8a2be2")
+            self.marker = map_widget.set_marker(self.coords[0], self.coords[1], text=self.name, icon=marker_icon,
+                                                text_color="#8a2be2")
         else:
             self.marker = None
 
