@@ -4,9 +4,8 @@ import webbrowser
 from database import db_engine
 from models import Jednostki
 
-
-
-def add_jednostki(jednostki_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miasto, entry_ulica, db_engine = db_engine) -> None:
+def add_jednostki(jednostki_data:list, list_box, map_widget, marker_icon, entry_nazwa, entry_miasto, entry_ulica,
+                  db_engine = db_engine) -> None:
     cursor = db_engine.cursor()
     name:str = entry_nazwa.get()
     city:str = entry_miasto.get()
@@ -44,9 +43,9 @@ def jednostki_info (jednostki_data:list, list_box, map_widget, marker_icon, db_e
 
         if not jednostka.coords:
             failed_coords.append(row[0])
-
     if failed_coords:
-        messagebox.showwarning("Brak lokalizacji – jednostki", "Nie udało się pobrać współrzędnych dla:\n\n" + "\n".join(failed_coords) + "\n\nTe jednostki nie będą widoczne na mapie.")
+        messagebox.showwarning("Brak lokalizacji – jednostki", "Nie udało się pobrać współrzędnych dla:\n\n" +
+                               "\n".join(failed_coords) + "\n\nTe jednostki nie będą widoczne na mapie.")
 
 def delete_jednostka(jednostki_data: list, list_box, map_widget, marker_icon) -> None:
     i = list_box.index(ACTIVE)
@@ -56,18 +55,20 @@ def delete_jednostka(jednostki_data: list, list_box, map_widget, marker_icon) ->
     cursor.execute("DELETE FROM public.jednostki WHERE name = %s", (name,))
     db_engine.commit()
     cursor.close()
-
     jednostki_info(jednostki_data, list_box, map_widget, marker_icon)
 
-def edit_jednostki(jednostki_data: list, list_box, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, map_widget, marker_icon) -> None:
+def edit_jednostki(jednostki_data: list, list_box, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, map_widget,
+                   marker_icon) -> None:
     i = list_box.index(ACTIVE)
     entry_nazwa.insert(0, jednostki_data[i].name)
     entry_miasto.insert(0, jednostki_data[i].city)
     entry_ulica.insert(0, jednostki_data[i].street)
 
-    button_dodaj.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon))
+    button_dodaj.config(text="Zapisz zmiany", command=lambda: update_jednostki(jednostki_data, i, entry_nazwa,
+                                entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon))
 
-def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box, map_widget, marker_icon) -> None:
+def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_ulica, button_dodaj, list_box,
+                     map_widget, marker_icon) -> None:
     old_name = jednostki_data[i].name
     jednostki_data[i].name = entry_nazwa.get()
     jednostki_data[i].city = entry_miasto.get()
@@ -85,14 +86,15 @@ def update_jednostki(jednostki_data: list, i, entry_nazwa, entry_miasto, entry_u
 
     jednostki_info(jednostki_data, list_box, map_widget, marker_icon)
 
-    button_dodaj.config(text="Dodaj jednostkę", command=lambda: add_jednostki(jednostki_data, list_box, map_widget, marker_icon, entry_nazwa, entry_miasto, entry_ulica))
+    button_dodaj.config(text="Dodaj jednostkę", command=lambda: add_jednostki(jednostki_data, list_box, map_widget,
+                                                                marker_icon, entry_nazwa, entry_miasto, entry_ulica))
     entry_nazwa.delete(0, END)
     entry_miasto.delete(0, END)
     entry_ulica.delete(0, END)
     entry_nazwa.focus()
 
-
-def show_jednostka_details(jednostki_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miasto, entry_ulica) -> None:
+def show_jednostka_details(jednostki_data: list, list_box, root, label_font, default_font, entry_nazwa, entry_miasto,
+                           entry_ulica) -> None:
     i = list_box.curselection()
     if not i:
         return
@@ -135,15 +137,15 @@ def show_jednostka_details(jednostki_data: list, list_box, root, label_font, def
     Label(info_frame, text="Opis:", font=label_font,  bg="#eddff7").grid(row=4, column=0, sticky=W, pady=5)
     Label(info_frame, text=data[4], font=default_font, bg="#eddff7").grid(row=4, column=1, sticky=W, pady=5)
 
-    Button(detail_window, text="Zamknij", command=detail_window.destroy, font=default_font, bg="#c9a9e6", fg="white").pack(pady=10)
-
+    Button(detail_window,text="Zamknij",command=detail_window.destroy,font=default_font,bg="#c9a9e6",fg="white").pack(pady=10)
 
     entry_nazwa.delete(0, END)
     entry_ulica.delete(0, END)
     entry_miasto.delete(0, END)
     entry_nazwa.focus()
 
-def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, pracownicy, list_box_pracownicy, marker_icon_highlighted, marker_icon_default_pracownicy) -> None:
+def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, pracownicy, list_box_pracownicy,
+                                  marker_icon_highlighted, marker_icon_default_pracownicy) -> None:
     i = list_box_jednostek.curselection()
     if not i:
         return
@@ -159,7 +161,6 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, prac
         return
 
     unit_id = result[0]
-
     cursor.execute("SELECT name, surname FROM public.pracownicy WHERE unit_id = %s", (unit_id,))
     wybrani_pracownicy = cursor.fetchall()
     cursor.close()
@@ -177,7 +178,8 @@ def filtr_pracownicy_by_jednostka(jednostki_data: list, list_box_jednostek, prac
                 list_box_pracownicy.selection_set(idx)
                 list_box_pracownicy.see(idx)
 
-def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incydenty, list_box_incydenty, marker_icon_highlighted, marker_icon_default_incydenty) -> None:
+def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incydenty, list_box_incydenty,
+                                 marker_icon_highlighted, marker_icon_default_incydenty) -> None:
     i = list_box_jednostek.curselection()
     if not i:
         return
@@ -193,7 +195,6 @@ def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incyd
         return
 
     unit_id = result[0]
-
     cursor.execute("SELECT name FROM public.incydenty WHERE unit_id = %s", (unit_id,))
     wybrane_incydenty = cursor.fetchall()
     cursor.close()
@@ -211,7 +212,8 @@ def filtr_incydenty_by_jednostka(jednostki_data: list, list_box_jednostek, incyd
                 list_box_incydenty.selection_set(idx)
                 list_box_incydenty.see(idx)
 
-def clear_highlights(pracownicy, incydenty, list_box_pracownicy, list_box_incydenty, marker_icon_default_pracownicy, marker_icon_default_incydenty) -> None:
+def clear_highlights(pracownicy, incydenty, list_box_pracownicy, list_box_incydenty, marker_icon_default_pracownicy,
+                     marker_icon_default_incydenty) -> None:
     list_box_pracownicy.selection_clear(0, END)
     list_box_incydenty.selection_clear(0, END)
     for pracownik in pracownicy:
@@ -220,6 +222,4 @@ def clear_highlights(pracownicy, incydenty, list_box_pracownicy, list_box_incyde
     for incydent in incydenty:
         if incydent.marker:
             incydent.marker.change_icon(marker_icon_default_incydenty)
-
-
 
