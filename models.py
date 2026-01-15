@@ -20,7 +20,7 @@ class Jednostki:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())
@@ -57,7 +57,7 @@ class Pracownicy:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())
@@ -94,7 +94,7 @@ class Incydenty:
                           'AppleWebKit/537.36 (KHTML, like Gecko) '
                           'Chrome/123.0 Safari/537.36'
         }
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers)
         # print(response.text)
         response_html = BeautifulSoup(response.text, 'html.parser')
         # print(response_html.prettify())

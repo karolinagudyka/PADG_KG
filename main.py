@@ -50,7 +50,6 @@ ramka_pracownicy.grid(row=0, column=2, sticky="nsew")
 ramka_formularz_pracownicy.grid(row=0, column=3, sticky="nsew")
 ramka_incydenty.grid(row=0, column=4, sticky="nsew")
 ramka_formularz_incydenty.grid(row=0, column=5, sticky="nsew")
-
 ramka_naglowek_mapy.grid(row=1, column=0, columnspan=6, sticky="ew", pady=10)
 ramka_mapa.grid(row=2, column=0, columnspan=6, sticky="nsew")
 
@@ -66,7 +65,6 @@ button_szczegoly_jednostki = Button(ramka_jednostki, text="Wyświetl szczegóły
                                     command=lambda: show_jednostka_details(jednostki, list_box_lista_jednostek, root,
                                     label_font, default_font, entry_nazwa_jednostki, entry_miasto_jednostki,
                                     entry_ulica_jednostki), bg="#d8a7e6", fg="white", bd=0,
-
                                     padx=10, pady=6, cursor="hand2")
 button_szczegoly_jednostki.grid(row=2, column=0, sticky="ew", padx=4, pady=4)
 
