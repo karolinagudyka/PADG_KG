@@ -14,7 +14,6 @@ def add_incydent(incydenty_data:list, list_box, map_widget, marker_icon, entry_n
     result = cursor.fetchone()
 
     unit_id = result[0]
-
     sql = "INSERT INTO public.incydenty(name, place, unit_id) VALUES (%s, %s, %s);"
     cursor.execute(sql, (name, place, unit_id))
     db_engine.commit()
